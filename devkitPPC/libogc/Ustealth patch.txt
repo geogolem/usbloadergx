@@ -1,0 +1,26 @@
+
+Libfat v1.1.1 with Ustealth support
+compiled with devkitPPC r29-1
+
+
+Included files
+==============
+libogc/lib/wii/libfat.a
+libogc/include/fat.h
+libogc/include/libfatversion.h
+
+
+
+Patch for UStealth
+==================
+
+partition.c
+
+Replaced line 183:
+
+	if ( (sectorBuffer[BPB_bootSig_55] != 0x55) || (sectorBuffer[BPB_bootSig_AA] != 0xAA)) {
+
+With
+
+	if ( (sectorBuffer[BPB_bootSig_55] != 0x55) || (sectorBuffer[BPB_bootSig_AA] != 0xAA && sectorBuffer[BPB_bootSig_AA] != 0xAB)) {
+	

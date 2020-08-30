@@ -1,0 +1,6 @@
+2017-11-01
+==========
+LibOGC 1.8.16
+LibFAT 1.1.1+Ustealth path
+Libz   1.2.3
+LibWUPC r3
