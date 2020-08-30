@@ -2257,7 +2257,7 @@ WOLFSSL_API int wolfSSL_make_eap_keys(WOLFSSL*, void* key, unsigned int len,
               !defined(WOLFSSL_EMBOS) && !defined(WOLFSSL_FROSTED) && \
               !defined(WOLFSSL_CHIBIOS) && !defined(WOLFSSL_CONTIKI) && \
               !defined(WOLFSSL_ZEPHYR)
-            #include <sys/uio.h>
+           // #include <sys/uio.h>
         #endif
         /* allow writev style writing */
         WOLFSSL_API int wolfSSL_writev(WOLFSSL* ssl, const struct iovec* iov,
