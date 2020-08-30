@@ -79,7 +79,7 @@ endif
 #---------------------------------------------------------------------------------
 LIBS := -lwolfssl -lcustomfat -lcustomntfs -lcustomext2fs -lvorbisidec -lmad -lfreetype \
 		-lgd -ljpeg -lpng -lzip -lm -lz -lwiiuse -lwiidrc -lbte -lasnd -logc -lruntimeiospatch
-#---------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
@@ -137,8 +137,8 @@ export OFILES	:=	$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) \
 #---------------------------------------------------------------------------------
 export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 					$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
-					-I$(CURDIR)/$(BUILD) -I$(LIBOGC_INC) \
-					-I$(PORTLIBS)/include -I$(PORTLIBS)/include/freetype2
+					-I$(CURDIR)/$(BUILD) -I$(DEVKITPPC)/libogc/include \
+					-I$(DEVKITPPC)/portlibs/ppc/include -I$(DEVKITPPC)/portlibs/ppc/include/freetype2 
 
 #---------------------------------------------------------------------------------
 # build a list of library paths
@@ -147,7 +147,7 @@ export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib) -L$(CURDIR)/source/lib
 					-L$(CURDIR)/source/libs/libntfs/ -L$(CURDIR)/source/libs/libext2fs/ \
 					-L$(CURDIR)/source/libs/libruntimeiospatch/ -L$(CURDIR)/source/libs/libdrc/ \
 					-L$(CURDIR)/source/libs/libwolfssl/ \
-					-L$(LIBOGC_LIB) -L$(PORTLIBS)/lib
+					-L$(DEVKITPPC)/libogc/lib/wii -L$(DEVKITPPC)/portlibs/ppc/lib
 
 export OUTPUT	:=	$(CURDIR)/$(TARGET)
 .PHONY: $(BUILD) lang all clean
