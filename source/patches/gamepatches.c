@@ -12,6 +12,7 @@
 #include "memory/mem2.h"
 #include "settings/SettingsEnums.h"
 #include "svnrev.h"
+#include "brainslug.h"
 
 typedef struct _appDOL
 {
@@ -58,7 +59,7 @@ void gamepatches(u8 videoSelected, u8 videoPatchDol, u8 aspectForce, u8 language
 	/* If a wip file is loaded for this game this does nothing - Dimok */
 	PoPPatch();
 	NSMBPatch();
-
+    
 	for(i = 0; i < dolCount; ++i)
 	{
 		u8 *dst = dolList[i].dst;
@@ -93,6 +94,9 @@ void gamepatches(u8 videoSelected, u8 videoPatchDol, u8 aspectForce, u8 language
 
 		if(privateServer)
 			PrivateServerPatcher(dst, len, privateServer);
+		
+		if(1) //brainslug
+			BrainslugPatches(dst, len);
 			
 		DCFlushRange(dst, len);
 		ICInvalidateRange(dst, len);
