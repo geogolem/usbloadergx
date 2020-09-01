@@ -62,7 +62,7 @@ int BrainslugPatches(u32 AppEntrypoint) {
     }
 
 
-    if (!Apploader_Init())
+    if (!Apploader_Init(AppEntrypoint))
         return -1;
     if (!Module_Init())
         return -1;

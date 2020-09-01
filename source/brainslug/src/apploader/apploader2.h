@@ -40,7 +40,7 @@ extern uint8_t *apploader_app0_end;
 extern uint8_t *apploader_app1_start;
 extern uint8_t *apploader_app1_end;
 
-bool Apploader_Init(void);
+bool Apploader_Init(u32);
 bool Apploader_RunBackground(void);
 
 #endif /* APPLOADER_H_ */

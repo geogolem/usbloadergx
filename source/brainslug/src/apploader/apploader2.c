@@ -65,6 +65,7 @@ event_t apploader_event_complete;
 apploader_game_entry_t apploader_game_entry_fn = NULL;
 uint8_t *apploader_app0_start = (void *) 0x80004000 ;
 uint8_t *apploader_app0_end = (void *) 0x80900000 ;
+u32 AppEntrypointFromGameBooter = 0;
 //uint8_t *apploader_app1_start = NULL;
 //uint8_t *apploader_app1_end = NULL;
 
@@ -75,7 +76,8 @@ uint8_t *apploader_app0_end = (void *) 0x80900000 ;
 
 static void *Aploader_Main(void *arg);
 
-bool Apploader_Init(void) {
+bool Apploader_Init(u32 AppEntrypoint) {
+    apploader_game_entry_fn = (void *) AppEntrypoint;
     return 
         //Event_Init(&apploader_event_disk_id) &&
         Event_Init(&apploader_event_complete);
@@ -116,7 +118,7 @@ static void *Aploader_Main(void *arg) {
 
     //Event_Trigger(&apploader_event_disk_id);
  
-    //fn_entry = (apploader_entry_t) AppEntrypoint;
+    //fn_entry = (apploader_entry_t) AppEntrypointFromGameBooter;
     
     //fn_entry(&fn_init, &fn_main, &fn_final);  
 
@@ -126,7 +128,6 @@ static void *Aploader_Main(void *arg) {
     Event_Wait(&module_event_list_loaded);
  
     //apploader_game_entry_fn = fn_final();
-
 
     Event_Trigger(&apploader_event_complete);
     
