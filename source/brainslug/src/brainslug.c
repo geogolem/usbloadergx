@@ -45,7 +45,7 @@ event_t main_event_fat_loaded;
 
 static void Main_PrintSize(size_t size);
 
-int BrainslugPatches(void *addr, u32 len) {
+int BrainslugPatches(void *dst, u32 len) {
     //int ret;
     //void *frame_buffer = NULL;
     //GXRModeObj *rmode = NULL;
