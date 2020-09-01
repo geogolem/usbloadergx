@@ -47,6 +47,8 @@ static void Main_PrintSize(size_t size);
 
 int BrainslugPatches() {
 
+    SYS_SetArena1Hi((void *)0x81200000);
+
     if (!__io_wiisd.startup() || !__io_wiisd.isInserted()) {
         printf("Please insert an SD card.\n\n");
         do {
@@ -104,50 +106,14 @@ int BrainslugPatches() {
     
     Event_Wait(&apploader_event_complete);
     Event_Wait(&module_event_complete);
-    //fatUnmount("sd");
-    //__io_wiisd.shutdown();
+    fatUnmount("sd");
+    __io_wiisd.shutdown();
     
     if (module_has_error) {
         printf("\nPress RESET to exit.\n");
         return -1;
     }
     return 0;
-    /*if (apploader_game_entry_fn == NULL) {
-        fprintf(stderr, "Error... entry point is NULL.\n");
-    } else {
-        if (module_has_info || search_has_info) {
-            printf("\nPress RESET to launch game.\n");
-            
-            while (!SYS_ResetButtonDown())
-                VIDEO_WaitVSync();
-            while (SYS_ResetButtonDown())
-                VIDEO_WaitVSync();
-        }
-        
-        SYS_ResetSystem(SYS_SHUTDOWN, 0, 0);
-        apploader_game_entry_fn();
-    }
-
-
-    goto exit;
-exit_error:
-    ret = -1;
-exit:
-    while (!SYS_ResetButtonDown())
-        VIDEO_WaitVSync();
-    while (SYS_ResetButtonDown())
-        VIDEO_WaitVSync();
-    
-    VIDEO_SetBlack(true);
-    VIDEO_Flush();
-    VIDEO_WaitVSync();
-    
-    free(frame_buffer);
-        
-    exit(ret);
-        
-    return ret;
-    */
 }
 
 static void Main_PrintSize(size_t size) {
