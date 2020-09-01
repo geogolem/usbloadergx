@@ -27,7 +27,7 @@
  
 #include "search.h"
 
-#include <dirent.h>
+#include <sys/dirent.h>
 #include <errno.h>
 #include <ogc/lwp.h>
 #include <stdbool.h>

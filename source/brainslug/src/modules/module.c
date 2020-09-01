@@ -26,7 +26,7 @@
 
 #include <assert.h>
 #include <bslug_include/bslug.h>
-#include <dirent.h>
+#include <sys/dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libelf.h>
@@ -232,7 +232,7 @@ static void Module_CheckDirectory(char *path) {
     dir = opendir(path);
     if (dir != NULL) {
         struct dirent *entry;
-        
+        //assert(dir == NULL);
         entry = readdir(dir);
         while (entry != NULL) {
             switch (entry->d_type) {

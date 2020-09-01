@@ -47,6 +47,20 @@ static void Main_PrintSize(size_t size);
 
 int BrainslugPatches() {
 
+    if (!__io_wiisd.startup() || !__io_wiisd.isInserted()) {
+        printf("Please insert an SD card.\n\n");
+        do {
+            __io_wiisd.shutdown();
+        } while (!__io_wiisd.startup() || !__io_wiisd.isInserted());
+    }
+    __io_wiisd.shutdown();
+    
+    if (!fatMountSimple("sd", &__io_wiisd)) {
+        fprintf(stderr, "Could not mount SD card.\n");
+        return -1;
+    }
+
+
     if (!Apploader_Init())
         return -1;
     if (!Module_Init())
