@@ -1,4 +1,4 @@
-/* main.h
+/* apploader.h
  *   by Alex Chadwick
  * 
  * Copyright (C) 2014, Alex Chadwick
@@ -22,15 +22,22 @@
  * SOFTWARE.
  */
 
-#ifndef MAIN_H_
-#define MAIN_H_
+#ifndef APPLOADER_H_
+#define APPLOADER_H_
 
-#include <bslug_include/version.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "library/event.h"
 
-#define BSLUG_LOADER_VERSION BSLUG_VERSION(0, 1, 2)
+typedef void (*apploader_game_entry_t)(void);
 
-extern event_t main_event_fat_loaded;
+extern event_t apploader_event_complete;
+extern apploader_game_entry_t apploader_game_entry_fn;
+extern uint8_t *apploader_app0_start;
+extern uint8_t *apploader_app0_end;
 
-#endif /* MAIN_H_ */
+bool Apploader_Init(u32);
+bool Apploader_RunBackground(void);
+
+#endif /* APPLOADER_H_ */

@@ -47,13 +47,27 @@ SOURCES		:=	source \
 				source/SystemMenu \
 				source/utils \
 				source/utils/minizip \
-				source/usbloader/wbfs
+				source/usbloader/wbfs \
+				source/brainslug \
+				source/brainslug/src \
+				source/brainslug/src/library \
+				source/brainslug/src/modules \
+				source/brainslug/src/libelf \
+				source/brainslug/src/apploader \
+				source/brainslug/src/search
 DATA		:=	data \
 				data/images \
 				data/fonts \
 				data/sounds \
 				data/binary
-INCLUDES	:=	source
+INCLUDES	:=	source \
+				source/brainslug \
+				source/brainslug/src \
+				source/brainslug/src/library \
+				source/brainslug/src/modules \
+				source/brainslug/src/libelf \
+				source/brainslug/src/apploader \
+				source/brainslug/src/search
 
 #---------------------------------------------------------------------------------
 # Default cIOS to load into to load the settings
@@ -77,7 +91,7 @@ endif
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
-LIBS := -lwolfssl -lcustomfat -lcustomntfs -lcustomext2fs -lvorbisidec -lmad -lfreetype \
+LIBS := -lwolfssl -lcustomfat -lcustomntfs -lcustomext2fs -lvorbisidec -lmad -lfreetype -lmxml\
 		-lgd -ljpeg -lpng -lzip -lm -lz -lwiiuse -lwiidrc -lbte -lasnd -logc -lruntimeiospatch
 #--------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
@@ -140,6 +154,7 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 					$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
 					-I$(CURDIR)/$(BUILD) -I$(DEVKITPPC)/libogc/include \
 					-I$(DEVKITPPC)/portlibs/ppc/include -I$(DEVKITPPC)/portlibs/ppc/include/freetype2 
+#$(error "$(INCLUDE)")
 
 #---------------------------------------------------------------------------------
 # build a list of library paths

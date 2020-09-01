@@ -39,10 +39,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "apploader/apploader.h"
+#include "apploader/apploader2.h"
 #include "library/dolphin_os.h"
 #include "library/event.h"
-#include "main.h"
+#include "brainslug.h"
 #include "search/search.h"
 #include "threads.h"
 
@@ -167,7 +167,7 @@ static void *Module_Main(void *arg) {
     if (!Module_ListLinkFinal(&space))
         goto exit_error;
     
-    assert(space > (uint8_t *)0x81800000 - module_list_size);
+    assert(space >= (uint8_t *)0x81800000 - module_list_size); // >= if no modules on sd card
     
     DCFlushRange(space, 0x81800000 - (uint32_t)space);
 
@@ -214,9 +214,7 @@ static void *Module_ListAllocate(
 
 static void Module_ListLoad(void) {
     char path[FILENAME_MAX];
-
-    Event_Wait(&main_event_fat_loaded);
-    
+   
     assert(sizeof(path) > sizeof(module_path));
     
     strcpy(path, module_path);
@@ -259,8 +257,6 @@ static void Module_CheckDirectory(char *path) {
                     if (strcmp(entry->d_name, ".") == 0 ||
                         strcmp(entry->d_name, "..") == 0)
                         break;
-                    
-                    Event_Wait(&apploader_event_disk_id);
                     
                     /* load directories with a prefix match on the game name:
                      * e.g. load directory RMC for game RMCP. */
@@ -442,7 +438,7 @@ static void Module_LoadElf(const char *path, Elf *elf) {
     
     for (i = 0; metadata->game[i] != '\0'; i++) {
         if (metadata->game[i] != '?') {
-            Event_Wait(&apploader_event_disk_id);
+            //Event_Wait(&apploader_event_disk_id);
             if ((i < 4 && metadata->game[i] != os0->disc.gamename[i]) ||
                 (i >= 4 && i < 6 &&
                  metadata->game[i] != os0->disc.company[i - 4]) ||

@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include "main.h"
+#include "brainslug.h"
 
 #include <fat.h>
 #include <malloc.h>
@@ -34,79 +34,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "apploader/apploader.h"
+#include "apploader/apploader2.h"
 #include "library/dolphin_os.h"
 #include "library/event.h"
 #include "modules/module.h"
 #include "search/search.h"
 #include "threads.h"
 
-event_t main_event_fat_loaded;
 
 static void Main_PrintSize(size_t size);
+int BrainslugPatches(u32 AppEntrypoint) {
 
-int main(void) {
-    int ret;
-    void *frame_buffer = NULL;
-    GXRModeObj *rmode = NULL;
+    //SYS_SetArena1Hi((void *)0x81200000);
     
-    /* The game's boot loader is statically loaded at 0x81200000, so we'd better
-     * not start mallocing there! */
-    SYS_SetArena1Hi((void *)0x81200000);
-
-    /* initialise all subsystems */
-    if (!Event_Init(&main_event_fat_loaded))
-        goto exit_error;
-    if (!Apploader_Init())
-        goto exit_error;
-    if (!Module_Init())
-        goto exit_error;
-    if (!Search_Init())
-        goto exit_error;
-    
-    /* main thread is UI, so set thread prior to UI */
-    LWP_SetThreadPriority(LWP_GetSelf(), THREAD_PRIO_UI);
-
-    /* configure the video */
-    VIDEO_Init();
-    
-    rmode = VIDEO_GetPreferredMode(NULL);
-    
-    frame_buffer = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
-    if (!frame_buffer)
-        goto exit_error;
-    console_init(
-        frame_buffer, 20, 20, rmode->fbWidth, rmode->xfbHeight,
-        rmode->fbWidth * VI_DISPLAY_PIX_SZ);
-
-    /* spawn lots of worker threads to do stuff */
-    if (!Apploader_RunBackground())
-        goto exit_error;
-    if (!Module_RunBackground())
-        goto exit_error;
-    if (!Search_RunBackground())
-        goto exit_error;
-        
-    VIDEO_Configure(rmode);
-    VIDEO_SetNextFramebuffer(frame_buffer);
-    VIDEO_SetBlack(false);
-    VIDEO_Flush();
-    VIDEO_WaitVSync();
-    if (rmode->viTVMode & VI_NON_INTERLACE)
-        VIDEO_WaitVSync();
-
-    /* display the welcome message */
-    printf("\x1b[2;0H");
-    printf("BrainSlug Wii  v%x.%02x.%04x"
-#ifndef NDEBUG
-        " DEBUG build"
-#endif
-        "\n",
-        BSLUG_VERSION_MAJOR(BSLUG_LOADER_VERSION),
-        BSLUG_VERSION_MINOR(BSLUG_LOADER_VERSION),
-        BSLUG_VERSION_REVISION(BSLUG_LOADER_VERSION));
-    printf(" by Chadderz\n\n");
-   
     if (!__io_wiisd.startup() || !__io_wiisd.isInserted()) {
         printf("Please insert an SD card.\n\n");
         do {
@@ -117,17 +57,29 @@ int main(void) {
     
     if (!fatMountSimple("sd", &__io_wiisd)) {
         fprintf(stderr, "Could not mount SD card.\n");
-        goto exit_error;
+        return -1;
     }
+
+    if (!Apploader_Init(AppEntrypoint))
+        return -1;
+    if (!Module_Init())
+        return -1;
+    if (!Search_Init())
+        return -1;
     
-    Event_Trigger(&main_event_fat_loaded);
-        
-    printf("Waiting for game disk...\n");
-    Event_Wait(&apploader_event_disk_id);
-    printf("Game ID: %.4s\n", os0->disc.gamename);
-        
-    printf("Loading modules...\n");
+    /* main thread is UI, so set thread prior to UI */
+    LWP_SetThreadPriority(LWP_GetSelf(), THREAD_PRIO_UI);
+    
+    /* spawn lots of worker threads to do stuff */
+    if (!Apploader_RunBackground())
+        return -1;
+    if (!Module_RunBackground())
+        return -1;
+    if (!Search_RunBackground())
+        return -1;
+      
     Event_Wait(&module_event_list_loaded);
+    // we make it here. if i put a return 0 in here the game launches.
     if (module_list_count == 0) {
         printf("No valid modules found!\n");
     } else {
@@ -156,44 +108,9 @@ int main(void) {
     
     if (module_has_error) {
         printf("\nPress RESET to exit.\n");
-        goto exit_error;
+        return -1;
     }
-    
-    if (apploader_game_entry_fn == NULL) {
-        fprintf(stderr, "Error... entry point is NULL.\n");
-    } else {
-        if (module_has_info || search_has_info) {
-            printf("\nPress RESET to launch game.\n");
-            
-            while (!SYS_ResetButtonDown())
-                VIDEO_WaitVSync();
-            while (SYS_ResetButtonDown())
-                VIDEO_WaitVSync();
-        }
-        
-        SYS_ResetSystem(SYS_SHUTDOWN, 0, 0);
-        apploader_game_entry_fn();
-    }
-
-    ret = 0;
-    goto exit;
-exit_error:
-    ret = -1;
-exit:
-    while (!SYS_ResetButtonDown())
-        VIDEO_WaitVSync();
-    while (SYS_ResetButtonDown())
-        VIDEO_WaitVSync();
-    
-    VIDEO_SetBlack(true);
-    VIDEO_Flush();
-    VIDEO_WaitVSync();
-    
-    free(frame_buffer);
-        
-    exit(ret);
-        
-    return ret;
+    return 0;
 }
 
 static void Main_PrintSize(size_t size) {

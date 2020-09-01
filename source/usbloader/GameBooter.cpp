@@ -55,6 +55,9 @@
 #include "FileOperations/fileops.h"
 #include "prompts/ProgressWindow.h"
 #include "neek.hpp"
+extern "C" {
+#include "brainslug.h"
+}
 
 //appentrypoint has to be global because of asm
 u32 AppEntrypoint = 0;
@@ -418,7 +421,6 @@ int GameBooter::BootGame(struct discHdr *gameHdr)
 	//! Do all the game patches
 	gprintf("Applying game patches...\n");
 	
-	
 	//! Now this code block is responsible for the private server patch
 	//! and the gecko code handler loading
 	
@@ -449,6 +451,8 @@ int GameBooter::BootGame(struct discHdr *gameHdr)
     //! Can (and should) be done before Wiimmfi patching, can't be done in gamepatches() itself.
     if(patchFix480pChoice)
 		PatchFix480p();
+
+	BrainslugPatches(AppEntrypoint);
 
 	//! New Wiimmfi patch should be loaded last, after the codehandler, just before the call to the entry point
 	if (PrivServChoice == PRIVSERV_WIIMMFI && memcmp(((void *)(0x80000000)), (char*)"RMC", 3) == 0 ) {

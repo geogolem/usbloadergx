@@ -35,12 +35,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "apploader/apploader.h"
+#include "apploader/apploader2.h"
 #include "library/dolphin_os.h"
 #include "library/event.h"
 #include "search/fsm.h"
 #include "search/symbol.h"
-#include "main.h"
+#include "brainslug.h"
 #include "threads.h"
 
 typedef struct {
@@ -148,9 +148,7 @@ exit_error:
 
 static void Search_SymbolsLoad(void) {
     char path[FILENAME_MAX];
-
-    Event_Wait(&main_event_fat_loaded);
-    
+  
     assert(sizeof(path) > sizeof(search_path));
     
     strcpy(path, search_path);
@@ -193,9 +191,7 @@ static void Search_CheckDirectory(char *path) {
                     if (strcmp(entry->d_name, ".") == 0 ||
                         strcmp(entry->d_name, "..") == 0)
                         break;
-                    
-                    Event_Wait(&apploader_event_disk_id);
-                    
+                                       
                     /* load directories with a prefix match on the game name:
                      * e.g. load directory RMC for game RMCP. */
                     if (strncmp(os0->disc.gamename, entry->d_name,
