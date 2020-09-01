@@ -41,8 +41,7 @@
 #include "search/search.h"
 #include "threads.h"
 
-//event_t main_event_fat_loaded;
- 
+
 static void Main_PrintSize(size_t size);
 int BrainslugPatches(u32 AppEntrypoint) {
 
@@ -60,7 +59,6 @@ int BrainslugPatches(u32 AppEntrypoint) {
         fprintf(stderr, "Could not mount SD card.\n");
         return -1;
     }
-
 
     if (!Apploader_Init(AppEntrypoint))
         return -1;

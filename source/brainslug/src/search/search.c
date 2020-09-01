@@ -148,9 +148,7 @@ exit_error:
 
 static void Search_SymbolsLoad(void) {
     char path[FILENAME_MAX];
-
-    Event_Wait(&main_event_fat_loaded);
-    
+  
     assert(sizeof(path) > sizeof(search_path));
     
     strcpy(path, search_path);
@@ -193,9 +191,7 @@ static void Search_CheckDirectory(char *path) {
                     if (strcmp(entry->d_name, ".") == 0 ||
                         strcmp(entry->d_name, "..") == 0)
                         break;
-                    
-                    Event_Wait(&apploader_event_disk_id);
-                    
+                                       
                     /* load directories with a prefix match on the game name:
                      * e.g. load directory RMC for game RMCP. */
                     if (strncmp(os0->disc.gamename, entry->d_name,
