@@ -12,7 +12,7 @@
 #include "memory/mem2.h"
 #include "settings/SettingsEnums.h"
 #include "svnrev.h"
-#include "brainslug.h"
+//#include "brainslug.h"
 
 typedef struct _appDOL
 {
@@ -98,8 +98,8 @@ void gamepatches(u8 videoSelected, u8 videoPatchDol, u8 aspectForce, u8 language
 		DCFlushRange(dst, len);
 		ICInvalidateRange(dst, len);
 	}
-	if(1) //brainslug
-		BrainslugPatches();
+	//if(1) //brainslug
+	//	BrainslugPatches();
 
 	/* ERROR 002 fix (thanks to WiiPower for sharing this)*/
 	*(u32 *)0x80003140 = *(u32 *)0x80003188;

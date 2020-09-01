@@ -59,6 +59,7 @@ typedef void (*apploader_entry_t)(
     apploader_main_t *main,
     apploader_final_t *final);
 
+extern u32 AppEntrypoint;
 //event_t apploader_event_disk_id;
 event_t apploader_event_complete;
 apploader_game_entry_t apploader_game_entry_fn = NULL;
@@ -108,10 +109,24 @@ bool Apploader_RunBackground(void) {
 }*/
     
 static void *Aploader_Main(void *arg) {
+    //apploader_init_t fn_init;
+    //apploader_main_t fn_main;
+    //apploader_final_t fn_final;
+    //apploader_entry_t fn_entry;
 
     //Event_Trigger(&apploader_event_disk_id);
  
+    //fn_entry = (apploader_entry_t) AppEntrypoint;
+    
+    //fn_entry(&fn_init, &fn_main, &fn_final);  
+
+    //settime(secs_to_ticks(time(NULL) - 946684800));
+
+
     Event_Wait(&module_event_list_loaded);
+ 
+    //apploader_game_entry_fn = fn_final();
+
 
     Event_Trigger(&apploader_event_complete);
     

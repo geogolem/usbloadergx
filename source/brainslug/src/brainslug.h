@@ -32,5 +32,5 @@
 //#define BSLUG_LOADER_VERSION BSLUG_VERSION(0, 1, 2)
 
 //extern event_t main_event_fat_loaded;
-int BrainslugPatches();
+int BrainslugPatches(u32); 
 #endif /* MAIN_H_ */
