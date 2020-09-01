@@ -26,7 +26,7 @@
 
 #include <assert.h>
 #include <bslug_include/bslug.h>
-#include <sys/dirent.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libelf.h>
@@ -150,27 +150,25 @@ static void *Module_Main(void *arg) {
     module_list_size += ((-module_list_size) & 0x1f);
     
     Event_Trigger(&module_event_list_loaded);
-    //we get to this point
+    
     space = (uint8_t *)0x81800000;
     
     if (!Module_ListLink(&space))
         goto exit_error;
     
     Event_Wait(&apploader_event_complete);
-    
     Event_Wait(&search_event_complete);
-    //we ge this far, if goto exit_error; here we load game
     if (search_has_error)
         goto exit_error;
     
     if (!Module_ListLoadSymbols(&space))
         goto exit_error;
-    //we ge this far, if goto exit_error; here we load game
+    
     if (!Module_ListLinkFinal(&space))
         goto exit_error;
-    //we ge this far, if goto exit_error; here we load game
-    assert(space >= (uint8_t *)0x81800000 - module_list_size);
-    //goto exit_error; //testing we didnt get this far
+    
+    assert(space > (uint8_t *)0x81800000 - module_list_size);
+    
     DCFlushRange(space, 0x81800000 - (uint32_t)space);
 
     Event_Trigger(&module_event_complete);
@@ -217,7 +215,7 @@ static void *Module_ListAllocate(
 static void Module_ListLoad(void) {
     char path[FILENAME_MAX];
 
-    //Event_Wait(&main_event_fat_loaded);
+    Event_Wait(&main_event_fat_loaded);
     
     assert(sizeof(path) > sizeof(module_path));
     
@@ -232,7 +230,7 @@ static void Module_CheckDirectory(char *path) {
     dir = opendir(path);
     if (dir != NULL) {
         struct dirent *entry;
-        //assert(dir == NULL);
+        
         entry = readdir(dir);
         while (entry != NULL) {
             switch (entry->d_type) {
@@ -262,7 +260,7 @@ static void Module_CheckDirectory(char *path) {
                         strcmp(entry->d_name, "..") == 0)
                         break;
                     
-                    //Event_Wait(&apploader_event_disk_id);
+                    Event_Wait(&apploader_event_disk_id);
                     
                     /* load directories with a prefix match on the game name:
                      * e.g. load directory RMC for game RMCP. */
@@ -444,7 +442,7 @@ static void Module_LoadElf(const char *path, Elf *elf) {
     
     for (i = 0; metadata->game[i] != '\0'; i++) {
         if (metadata->game[i] != '?') {
-            //Event_Wait(&apploader_event_disk_id);
+            Event_Wait(&apploader_event_disk_id);
             if ((i < 4 && metadata->game[i] != os0->disc.gamename[i]) ||
                 (i >= 4 && i < 6 &&
                  metadata->game[i] != os0->disc.company[i - 4]) ||
