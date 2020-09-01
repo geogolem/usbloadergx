@@ -39,7 +39,7 @@
 #include "modules/module.h"
 #include "threads.h"
 
-typedef struct {
+/*typedef struct {
     uint32_t boot_info_count;
     uint32_t partition_info_offset;
 } contents_t;
@@ -48,7 +48,7 @@ typedef struct {
     uint32_t offset;
     uint32_t type;
 } partition_info_t;
-
+*/
 // types for the four methods called on the game's apploader
 typedef void (*apploader_report_t)(const char *format, ...);
 typedef void (*apploader_init_t)(apploader_report_t report_fn);
@@ -59,16 +59,16 @@ typedef void (*apploader_entry_t)(
     apploader_main_t *main,
     apploader_final_t *final);
 
-event_t apploader_event_disk_id;
+//event_t apploader_event_disk_id;
 event_t apploader_event_complete;
 apploader_game_entry_t apploader_game_entry_fn = NULL;
 uint8_t *apploader_app0_start = (void *) 0x80004000 ;
 uint8_t *apploader_app0_end = (void *) 0x80900000 ;
-uint8_t *apploader_app1_start = NULL;
-uint8_t *apploader_app1_end = NULL;
+//uint8_t *apploader_app1_start = NULL;
+//uint8_t *apploader_app1_end = NULL;
 
-#define APPLOADER_APP0_BOUNDARY ((void *)0x81200000)
-#define APPLOADER_APP1_BOUNDARY ((void *)0x81400000)
+//#define APPLOADER_APP0_BOUNDARY ((void *)0x81200000)
+//  #define APPLOADER_APP1_BOUNDARY ((void *)0x81400000)
 
 //static u32 apploader_ipc_tmd[0x4A00 / 4] ATTRIBUTE_ALIGN(32);
 
@@ -76,7 +76,7 @@ static void *Aploader_Main(void *arg);
 
 bool Apploader_Init(void) {
     return 
-        Event_Init(&apploader_event_disk_id) &&
+        //Event_Init(&apploader_event_disk_id) &&
         Event_Init(&apploader_event_complete);
 }
 
@@ -96,20 +96,20 @@ bool Apploader_RunBackground(void) {
     return true;
 }
 
-void Apploader_Report(const char *format, ...) {
-#if 0
+//void Apploader_Report(const char *format, ...) {
+//#if 0
     /* debugging code, uncomment to display apploader logging messages */
-    va_list args;
+/*    va_list args;
 
     va_start(args, format);
     vprintf(message, sizeof(message), format, args);
     va_end(args);
 #endif
-}
+}*/
     
 static void *Aploader_Main(void *arg) {
 
-    Event_Trigger(&apploader_event_disk_id);
+    //Event_Trigger(&apploader_event_disk_id);
  
     Event_Wait(&module_event_list_loaded);
 

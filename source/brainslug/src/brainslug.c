@@ -41,22 +41,12 @@
 #include "search/search.h"
 #include "threads.h"
 
-event_t main_event_fat_loaded;
+//event_t main_event_fat_loaded;
 
 static void Main_PrintSize(size_t size);
 
-int BrainslugPatches(void *dst, u32 len) {
-    //int ret;
-    //void *frame_buffer = NULL;
-    //GXRModeObj *rmode = NULL;
-    
-    /* The game's boot loader is statically loaded at 0x81200000, so we'd better
-     * not start mallocing there! */
-    SYS_SetArena1Hi((void *)0x81200000);
+int BrainslugPatches() {
 
-    /* initialise all subsystems */
-    //if (!Event_Init(&main_event_fat_loaded))
-    //    goto exit_error;
     if (!Apploader_Init())
         return -1;
     if (!Module_Init())
@@ -66,19 +56,7 @@ int BrainslugPatches(void *dst, u32 len) {
     
     /* main thread is UI, so set thread prior to UI */
     LWP_SetThreadPriority(LWP_GetSelf(), THREAD_PRIO_UI);
-
-    /* configure the video */
-    //VIDEO_Init();
     
-    //rmode = VIDEO_GetPreferredMode(NULL);
-    
-    //frame_buffer = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
-    //if (!frame_buffer)
-    //    goto exit_error;
-    //console_init(
-    //    frame_buffer, 20, 20, rmode->fbWidth, rmode->xfbHeight,
-    //    rmode->fbWidth * VI_DISPLAY_PIX_SZ);
-
     /* spawn lots of worker threads to do stuff */
     if (!Apploader_RunBackground())
         return -1;
@@ -86,49 +64,9 @@ int BrainslugPatches(void *dst, u32 len) {
         return -1;
     if (!Search_RunBackground())
         return -1;
-        
-    //VIDEO_Configure(rmode);
-    //VIDEO_SetNextFramebuffer(frame_buffer);
-    //VIDEO_SetBlack(false);
-    //VIDEO_Flush();
-    //VIDEO_WaitVSync();
-    //if (rmode->viTVMode & VI_NON_INTERLACE)
-    //    VIDEO_WaitVSync();
-
-    /* display the welcome message */
-    //printf("\x1b[2;0H");
-    //printf("BrainSlug Wii  v%x.%02x.%04x"
-//#ifndef NDEBUG
-//        " DEBUG build"
-//#endif
-     /*   "\n",
-        BSLUG_VERSION_MAJOR(BSLUG_LOADER_VERSION),
-        BSLUG_VERSION_MINOR(BSLUG_LOADER_VERSION),
-        BSLUG_VERSION_REVISION(BSLUG_LOADER_VERSION));
-    printf(" by Chadderz\n\n");
-   
-    if (!__io_wiisd.startup() || !__io_wiisd.isInserted()) {
-        printf("Please insert an SD card.\n\n");
-        do {
-            __io_wiisd.shutdown();
-        } while (!__io_wiisd.startup() || !__io_wiisd.isInserted());
-    }
-    __io_wiisd.shutdown();
-    
-    if (!fatMountSimple("sd", &__io_wiisd)) {
-        fprintf(stderr, "Could not mount SD card.\n");
-        goto exit_error;
-    }
-    
-    Event_Trigger(&main_event_fat_loaded);
-        
-    printf("Waiting for game disk...\n");*/
-    Event_Wait(&apploader_event_disk_id); /*
-    printf("Game ID: %.4s\n", os0->disc.gamename);
-        
-    printf("Loading modules...\n");
-    */
+      
     Event_Wait(&module_event_list_loaded);
+    // we make it here. if i put a return 0 in here the game launches.
     if (module_list_count == 0) {
         printf("No valid modules found!\n");
     } else {

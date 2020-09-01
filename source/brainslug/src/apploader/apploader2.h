@@ -32,7 +32,7 @@
 
 typedef void (*apploader_game_entry_t)(void);
 
-extern event_t apploader_event_disk_id;
+//extern event_t apploader_event_disk_id;
 extern event_t apploader_event_complete;
 extern apploader_game_entry_t apploader_game_entry_fn;
 extern uint8_t *apploader_app0_start;
