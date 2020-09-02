@@ -73,7 +73,35 @@ bool Apploader_RunBackground(void) {
 static void *Aploader_Main(void *arg) {
   
     Event_Wait(&module_event_list_loaded);
+    
+    // Some of this stuff needs to be here (or somewhere) refer to disc.c of usbloader and/or memory.h
 
+    //os0->info.boot_type = OS_BOOT_NORMAL;
+    //os0->info.version = 1;
+    //os0->info.mem1_size = 0x01800000;
+    //os0->info.console_type = 1 + ((*(uint32_t *)0xcc00302c) >> 28);
+    
+    /* // We definitely need this.. i think
+    os0->info.arena_high = os0->info.arena_high - module_list_size;
+    os0->info.fst = (char *)os0->info.fst - module_list_size;
+    os0->info.fst_size += module_list_size;
+    */
+
+    //os0->threads.debug_monitor_location = (void *)0x81800000;
+    //os0->threads.simulated_memory_size = 0x01800000;
+    //os0->threads.bus_speed = 0x0E7BE2C0;
+    //os0->threads.cpu_speed = 0x2B73A840;
+    
+    /* FIXME: We don't currently reload IOS. To prevent Error #002 we pretend
+     * like we have. */
+    
+    //os1->ios_number = os1->expected_ios_number;
+    //os1->ios_revision = os1->expected_ios_revision;
+
+    //os1->fst = os0->info.fst;
+
+    //DCFlushRange(os0, 0x3f00);
+    
     Event_Trigger(&apploader_event_complete);
     
     return NULL;
