@@ -65,6 +65,7 @@ CustomPathsSM::CustomPathsSM()
 	Options->SetName(Idx++, tr("Devolution Loader Path"));
 	Options->SetName(Idx++, tr("Nintendont Loader Path"));
 	Options->SetName(Idx++, tr("Cache BNR Files Path"));
+	Options->SetName(Idx++, tr("Game Header Cache Files Path"));
 
 	SetOptionValues();
 }
@@ -141,6 +142,9 @@ void CustomPathsSM::SetOptionValues()
 
 	//! Settings: Cache BNR Files Path
 	Options->SetValue(Idx++, Settings.BNRCachePath);
+
+	//! Settings: Game Header Cache Files Path
+	Options->SetValue(Idx++, Settings.GameHeaderCachePath);
 }
 
 int CustomPathsSM::GetMenuInternal()
@@ -204,7 +208,7 @@ int CustomPathsSM::GetMenuInternal()
 					MoveDbFile(oldPath, Settings.titlestxt_path, "TitlesCache.bin");
 					MoveDbFile(oldPath, Settings.titlestxt_path, "wiitdb_offsets.bin");
 					MoveDbFile(oldPath, Settings.titlestxt_path, "GameTimestamps.txt");
-				
+
 					WindowPrompt(tr("Process finished."), 0, tr("OK"));
 				}
 			}
@@ -366,6 +370,13 @@ int CustomPathsSM::GetMenuInternal()
 	{
 		titleTxt->SetText(tr( "Cache BNR Files Path" ));
 		ChangePath(Settings.BNRCachePath, sizeof(Settings.BNRCachePath));
+	}
+
+	//! Settings: Game Header Cache Files Path
+	else if (ret == ++Idx)
+	{
+		titleTxt->SetText(tr( "Game Header Cache Files Path" ));
+		ChangePath(Settings.GameHeaderCachePath, sizeof(Settings.GameHeaderCachePath));
 	}
 
 	//! Global set back of the titleTxt after a change

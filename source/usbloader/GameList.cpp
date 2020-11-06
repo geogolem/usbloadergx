@@ -37,6 +37,7 @@
 #include "GameList.h"
 #include "memory/memory.h"
 #include "Channels/channels.h"
+#include "cache/cache.hpp"
 
 enum { DISABLED, ENABLED, HIDEFORBIDDEN };
 
@@ -156,6 +157,13 @@ int GameList::InternalReadList(int part)
 
 int GameList::ReadGameList()
 {
+    if(Settings.UseGameHeaderCache && isCacheFile(WII_HEADER_CACHE_FILE)){
+        if(FullGameList.empty() && GamePartitionList.empty())
+            LoadGameHeaderCache(FullGameList, GamePartitionList);
+
+        if(!FullGameList.empty()) return (int)FullGameList.size();
+    }
+
 	// Clear list
 	FullGameList.clear();
 	GamePartitionList.clear();
@@ -180,6 +188,9 @@ int GameList::ReadGameList()
 		}
 	}
 
+    if(Settings.UseGameHeaderCache && !FullGameList.empty() && !GamePartitionList.empty()){
+        SaveGameHeaderCache(FullGameList, GamePartitionList);
+    }
 	return cnt;
 }
 
@@ -249,7 +260,7 @@ void GameList::InternalFilterList(std::vector<struct discHdr> &FullList)
 				break;
 			}
 		}
-		
+
 		if(allType == DISABLED)
 		{
 			// Remove TitleID if it contains a forbidden categories
@@ -260,7 +271,7 @@ void GameList::InternalFilterList(std::vector<struct discHdr> &FullList)
 			}
 			if(n < Settings.ForbiddenCategories.size())
 				continue;
-			
+
 			// Remove TitleID is it doesn't contain a required categories
 			for(n = 0; n < Settings.RequiredCategories.size(); ++n)
 			{
@@ -269,7 +280,7 @@ void GameList::InternalFilterList(std::vector<struct discHdr> &FullList)
 			}
 			if(n < Settings.RequiredCategories.size())
 				continue;
-			
+
 			// If there's no required categories, verify if the TitleID should be kept or removed
 			if(Settings.RequiredCategories.size() == 0)
 			{
@@ -282,7 +293,7 @@ void GameList::InternalFilterList(std::vector<struct discHdr> &FullList)
 					continue;
 			}
 		}
-		
+
 		if(allType == HIDEFORBIDDEN)
 		{
 			// Remove TitleID if it contains a forbidden categories
@@ -294,14 +305,16 @@ void GameList::InternalFilterList(std::vector<struct discHdr> &FullList)
 			}
 			if(n < Settings.ForbiddenCategories.size())
 				continue;
-		}	
-		
+		}
+
 		FilteredList.push_back(header);
 	}
 }
 
 int GameList::FilterList(const wchar_t * gameFilter)
 {
+    if(Settings.UseGameHeaderCache) ReadGameList();
+
 	if((Settings.LoaderMode & MODE_WIIGAMES) && (FullGameList.size() == 0))
 		ReadGameList();
 
@@ -309,6 +322,12 @@ int GameList::FilterList(const wchar_t * gameFilter)
 		GameFilter.assign(gameFilter);
 
 	FilteredList.clear();
+
+    if(Settings.UseGameHeaderCache && isCacheFile(FilteredListCacheFileName(gameFilter))){
+        LoadFilteredListCache(FilteredList, GameFilter.c_str());
+        GuiSearchBar::FilterList(FilteredList, GameFilter);
+        if(!FilteredList.empty()) return FilteredList.size();
+    }
 
 	// Filter current game list if selected
 	if(Settings.LoaderMode & MODE_WIIGAMES)
@@ -331,6 +350,9 @@ int GameList::FilterList(const wchar_t * gameFilter)
 
 	SortList();
 
+	if (Settings.UseGameHeaderCache && !FilteredList.empty() && (Settings.GameSort & SORT_RANKING) == 0 && (Settings.GameSort & SORT_PLAYCOUNT) == 0 && (Settings.GameSort & SORT_FAVORITE) == 0)
+        SaveFilteredListCache(FilteredList, GameFilter.c_str());
+
 	return FilteredList.size();
 }
 
@@ -349,11 +371,19 @@ void GameList::InternalLoadUnfiltered(std::vector<struct discHdr> &FullList)
 
 int GameList::LoadUnfiltered()
 {
+    if(Settings.UseGameHeaderCache) ReadGameList();
+
 	if((Settings.LoaderMode & MODE_WIIGAMES) && (FullGameList.size() == 0))
 		ReadGameList();
 
 	GameFilter.clear();
 	FilteredList.clear();
+
+    if(Settings.UseGameHeaderCache && isCacheFile(FilteredListCacheFileName())){
+        LoadFilteredListCache(FilteredList, GameFilter.c_str());
+        GuiSearchBar::FilterList(FilteredList, GameFilter);
+        if(!FilteredList.empty()) return FilteredList.size();
+    }
 
 	// Filter current game list if selected
 	if(Settings.LoaderMode & MODE_WIIGAMES)
@@ -375,6 +405,9 @@ int GameList::LoadUnfiltered()
 	GuiSearchBar::FilterList(FilteredList, GameFilter);
 
 	SortList();
+
+	if (Settings.UseGameHeaderCache && !FilteredList.empty() && (Settings.GameSort & SORT_RANKING) == 0 && (Settings.GameSort & SORT_PLAYCOUNT) == 0  && (Settings.GameSort & SORT_FAVORITE) == 0)
+        SaveFilteredListCache(FilteredList, GameFilter.c_str());
 
 	return FilteredList.size();
 }

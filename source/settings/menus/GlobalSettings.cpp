@@ -34,6 +34,8 @@
 #include "FeatureSettingsMenu.hpp"
 #include "HardDriveSM.hpp"
 #include "BannerSettingsMenu.hpp"
+#include "cache/cache.hpp"
+#include "cheats/cheatdl.h"
 
 GlobalSettings::GlobalSettings()
 	: FlyingButtonsMenu(tr("Global Settings"))
@@ -81,6 +83,8 @@ void GlobalSettings::SetupMainButtons()
 	SetMainButton(pos++, tr( "Theme Menu" ), MainButtonImgData, MainButtonImgOverData);
 	SetMainButton(pos++, tr( "Theme Downloader" ), MainButtonImgData, MainButtonImgOverData);
 	SetMainButton(pos++, tr( "Update" ), MainButtonImgData, MainButtonImgOverData);
+	SetMainButton(pos++, tr( "Reset Game Header Cache" ), MainButtonImgData, MainButtonImgOverData);
+	SetMainButton(pos++, tr( "Get Missing Cheat Codes" ), MainButtonImgData, MainButtonImgOverData);
 	SetMainButton(pos++, tr( "Default Settings" ), MainButtonImgData, MainButtonImgOverData);
 	SetMainButton(pos++, tr( "Credits" ), creditsImgData, creditsImgOverData);
 }
@@ -223,10 +227,10 @@ void GlobalSettings::CreateSettingsMenu(int menuNr)
 			WindowPrompt(tr( "Permission denied." ), tr( "Console must be unlocked for this option." ), tr( "OK" ));
 			return;
 		}
-		
+
 		WindowPrompt(tr( "Warning:" ), tr( "Sorry, the theme downloader menu is not working anymore because http://wii.spiffy360.com now requires user registration." ), tr( "OK" ));
 			return;
-		
+
 		// returnMenu = MENU_THEMEDOWNLOADER;
 	}
 	//! Update
@@ -246,6 +250,39 @@ void GlobalSettings::CreateSettingsMenu(int menuNr)
 			WindowPrompt(tr( "Update failed" ), 0, tr( "OK" ));
 		Append(backBtn);
 		ShowMenu();
+	}
+	//! Reset Game Header Cache
+	else if(menuNr == Idx++)
+	{
+		if(!Settings.godmode && (Settings.ParentalBlocks & BLOCK_RESET_SETTINGS))
+		{
+			WindowPrompt(tr( "Permission denied." ), tr( "Console must be unlocked for this option." ), tr( "OK" ));
+			return;
+		}
+		int choice = WindowPrompt(tr( "Are you sure you want to reset?" ), 0, tr( "Yes" ), tr( "Cancel" ));
+		if (choice == 1)
+		{
+			HaltGui();
+			gettextCleanUp();
+			ResetGameHeaderCache();
+			returnMenu = MENU_SETTINGS;
+			ResumeGui();
+		}
+	}
+	//! Get Availible Cheat Codes
+	else if(menuNr == Idx++)
+	{
+		if(!Settings.godmode && (Settings.ParentalBlocks & BLOCK_UPDATES))
+		{
+			WindowPrompt(tr( "Permission denied." ), tr( "Console must be unlocked for this option." ), tr( "OK" ));
+			return;
+		}
+
+        HaltGui();
+        gettextCleanUp();
+        GetMissingCheatCodes();
+        returnMenu = MENU_SETTINGS;
+        ResumeGui();
 	}
 	//! Default Settings
 	else if(menuNr == Idx++)

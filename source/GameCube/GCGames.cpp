@@ -30,6 +30,7 @@
 #include "system/IosLoader.h"
 #include "menu.h"
 #include "gecko.h"
+#include "cache/cache.hpp"
 
 GCGames *GCGames::instance = NULL;
 
@@ -217,10 +218,19 @@ void GCGames::LoadGameList(const string &path, vector<struct discHdr> &headerLis
 
 u32 GCGames::LoadAllGames(void)
 {
+    if(Settings.UseGameHeaderCache && isCacheFile(GAMECUBE_HEADER_CACHE_FILE)){
+        if(HeaderList.empty() && PathList.empty())
+            LoadGameHeaderCache(HeaderList, PathList);
+
+        if(!HeaderList.empty()) return (int)HeaderList.size();
+    }
+
+
 	PathList.clear();
 	HeaderList.clear();
 	sdGCList.clear();
 	sdGCPathList.clear();
+
 
 	if(strcmp(Settings.GameCubePath, Settings.GameCubeSDPath) == 0 || Settings.GameCubeSource != GC_SOURCE_SD)
 		LoadGameList(Settings.GameCubePath, HeaderList, PathList);
@@ -266,6 +276,10 @@ u32 GCGames::LoadAllGames(void)
  			}
 		}
 	}
+
+    if(Settings.UseGameHeaderCache && !HeaderList.empty() && !PathList.empty()){
+        SaveGameHeaderCache(HeaderList, PathList);
+    }
 
 	return HeaderList.size();
 }
@@ -394,7 +408,7 @@ bool GCGames::IsInstalled(const char *gameID, u8 disc_number) const
 		{
 			if(HeaderList[n].type == TYPE_GAME_GC_EXTRACTED || Settings.GCInstallCompressed)
 				return true; // Multi-disc games in extracted form are currently unsupported by DML, no need to check further.
-			
+
 			if(HeaderList[n].disc_no == disc_number) // Disc number already in headerList. If Disc2 is loaded in headerList, then Disc1 is not installed yet
 			{
 				return true;
@@ -406,7 +420,7 @@ bool GCGames::IsInstalled(const char *gameID, u8 disc_number) const
 				char *pathPtr = strrchr(filepath, '/');
 				if(pathPtr) *pathPtr = 0;
 				snprintf(filepath, sizeof(filepath), "%s/disc2.iso", filepath);
-				
+
 				if(CheckFile(filepath))
 					return true;
 			}
@@ -427,7 +441,7 @@ bool GCGames::CopyUSB2SD(const struct discHdr *header)
 		return false;
 
 	const char *cpTitle = GameTitles.GetTitle(header);
-	
+
 	if(choice == 2)
 	{
 		// Load Games from SD card only
@@ -591,7 +605,7 @@ int nintendontBuildDate(const char *NIN_loader_path, char *NINBuildDate)
 					// Search month string start position in header
 					char *dateStart = NULL;
 					const char *month[] = {"Jan ", "Feb ", "Mar ", "Apr ", "May ", "Jun ", "Jui ", "Aug ", "Sep ", "Oct ", "Nov ", "Dec "};
-					for(u8 m = 0 ; m < 12 ; m++) 
+					for(u8 m = 0 ; m < 12 ; m++)
 					{
 						dateStart = strstr(NINHeader, month[m]);
 						if(dateStart != NULL)
@@ -599,12 +613,12 @@ int nintendontBuildDate(const char *NIN_loader_path, char *NINBuildDate)
 					}
 					if(dateStart == NULL)
 						break;
-					
+
 					dateStart[20] = '\0';
-					
+
 					sprintf(NINBuildDate, "%.20s", dateStart);
 					gprintf("Nintendont Build date : %.20s \n", dateStart);
-					
+
 					found = true;
 					break;
 				}
@@ -614,7 +628,7 @@ int nintendontBuildDate(const char *NIN_loader_path, char *NINBuildDate)
 		if(found)
 			return 1;
 	}
-	
+
 	return 0;
 }
 
@@ -645,6 +659,6 @@ int nintendontVersion(const char *NIN_loader_path, char *NINVersion, int len)
 			free(buffer);
 		}
 	}
-	
+
 	return NINRev;
 }

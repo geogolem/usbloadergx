@@ -1,0 +1,1324 @@
+Binary files usbloadergx-1/.svn/wc.db and usbloadergx-2/.svn/wc.db differ
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/Makefile usbloadergx-2/Makefile
+--- usbloadergx-1/Makefile	2020-11-04 14:45:26.343266443 +0000
++++ usbloadergx-2/Makefile	2020-11-04 14:45:55.420944036 +0000
+@@ -16,6 +16,7 @@
+ #---------------------------------------------------------------------------------
+ TARGET		:=	boot
+ BUILD		:=	build
++DEPLOY		:=  usbloader_gx
+ SOURCES		:=	source \
+ 				source/GUI \
+ 				source/Controls \
+@@ -47,7 +48,8 @@
+ 				source/SystemMenu \
+ 				source/utils \
+ 				source/utils/minizip \
+-				source/usbloader/wbfs
++				source/usbloader/wbfs \
++				source/cache
+ DATA		:=	data \
+ 				data/images \
+ 				data/fonts \
+@@ -59,7 +61,7 @@
+ # Default cIOS to load into to load the settings
+ #---------------------------------------------------------------------------------
+ ifndef $(IOS)
+-IOS = 58
++IOS = 249
+ endif
+ 
+ #---------------------------------------------------------------------------------
+@@ -181,14 +183,28 @@
+ #---------------------------------------------------------------------------------
+ clean:
+ 	@echo clean ...
+-	@rm -fr $(BUILD) $(OUTPUT).elf $(OUTPUT).dol
++	@rm -fr $(BUILD) $(DEPLOY) $(OUTPUT).elf $(OUTPUT).dol $(DEPLOY).zip
+ #---------------------------------------------------------------------------------
+ run:
+ 	$(MAKE)
+ 	@echo Done building ...
+ 	@echo Now Run That Shit ...
+ 
+-	wiiload $(OUTPUT).dol
++	wiiload $(OUTPUT).dol --ios=249
++
++#---------------------------------------------------------------------------------
++deploy:
++	$(MAKE)
++	@echo Done building ...
++	@echo Now Run That Shit ...
++
++	@[ -d $(DEPLOY) ] || mkdir -p $(DEPLOY)
++	@cp $(TARGET).dol $(DEPLOY)/
++	@cp HBC/icon.png $(DEPLOY)/
++	@cp HBC/meta.xml $(DEPLOY)/
++	@zip $(DEPLOY).zip $(DEPLOY)/*
++
++	wiiload $(DEPLOY).zip
+ 
+ #---------------------------------------------------------------------------------
+ reload:
+@@ -267,7 +283,7 @@
+ %.tmd.o	:	%.tmd
+ 	@echo $(notdir $<)
+ 	@bin2s -a 32 $< | $(AS) -o $(@)
+-	
++
+ %.bnr.o	:	%.bnr
+ 	@echo $(notdir $<)
+ 	@bin2s -a 32 $< | $(AS) -o $(@)
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/Channels/channels.cpp usbloadergx-2/source/Channels/channels.cpp
+--- usbloadergx-1/source/Channels/channels.cpp	2020-11-04 14:45:29.490042185 +0000
++++ usbloadergx-2/source/Channels/channels.cpp	2020-11-04 14:45:56.220971943 +0000
+@@ -37,6 +37,7 @@
+ #include "gecko.h"
+ 
+ #include "channels.h"
++#include "cache/cache.hpp"
+ 
+ typedef struct _dolheader{
+ 	u32 section_pos[18];
+@@ -134,9 +135,20 @@
+ 
+ vector<struct discHdr> & Channels::GetEmuHeaders(void)
+ {
++    if(Settings.UseGameHeaderCache && isCacheFile(EMUNAND_HEADER_CACHE_FILE)){
++        if(EmuChannels.empty())
++            LoadGameHeaderCache(EmuChannels);
++
++        if(!EmuChannels.empty()) return EmuChannels;
++    }
++
+ 	if(EmuChannels.empty())
+ 		this->GetEmuChannelList();
+ 
++    if(Settings.UseGameHeaderCache && !EmuChannels.empty()){
++        SaveGameHeaderCache(EmuChannels);
++    }
++
+ 	return EmuChannels;
+ }
+ 
+@@ -472,7 +484,7 @@
+ 	}
+ 
+ 	u32 cid  = titleTmd->contents[i].cid;
+-	
++
+ 	free(buffer);
+ 
+ 	char *ptr = strrchr(tmdpath, '/');
+@@ -487,7 +499,7 @@
+ 		return false;
+ 
+ 	fclose(f);
+-	
++
+ 	return true;
+ }
+ 
+@@ -531,7 +543,7 @@
+ 		// check if content in tmd exists
+ 		if(!emuExists(path))
+ 			continue;
+-			
++
+ 		u32 tidLow = strtoul(dirent->d_name, NULL, 16);
+ 		char id[5];
+ 		memset(id, 0, sizeof(id));
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/GameCube/GCGames.cpp usbloadergx-2/source/GameCube/GCGames.cpp
+--- usbloadergx-1/source/GameCube/GCGames.cpp	2020-11-04 14:45:28.823352402 +0000
++++ usbloadergx-2/source/GameCube/GCGames.cpp	2020-11-04 14:45:56.210971595 +0000
+@@ -30,6 +30,7 @@
+ #include "system/IosLoader.h"
+ #include "menu.h"
+ #include "gecko.h"
++#include "cache/cache.hpp"
+ 
+ GCGames *GCGames::instance = NULL;
+ 
+@@ -217,11 +218,20 @@
+ 
+ u32 GCGames::LoadAllGames(void)
+ {
++    if(Settings.UseGameHeaderCache && isCacheFile(GAMECUBE_HEADER_CACHE_FILE)){
++        if(HeaderList.empty() && PathList.empty())
++            LoadGameHeaderCache(HeaderList, PathList);
++
++        if(!HeaderList.empty()) return (int)HeaderList.size();
++    }
++
++
+ 	PathList.clear();
+ 	HeaderList.clear();
+ 	sdGCList.clear();
+ 	sdGCPathList.clear();
+ 
++
+ 	if(strcmp(Settings.GameCubePath, Settings.GameCubeSDPath) == 0 || Settings.GameCubeSource != GC_SOURCE_SD)
+ 		LoadGameList(Settings.GameCubePath, HeaderList, PathList);
+ 
+@@ -267,6 +277,10 @@
+ 		}
+ 	}
+ 
++    if(Settings.UseGameHeaderCache && !HeaderList.empty() && !PathList.empty()){
++        SaveGameHeaderCache(HeaderList, PathList);
++    }
++
+ 	return HeaderList.size();
+ }
+ 
+@@ -394,7 +408,7 @@
+ 		{
+ 			if(HeaderList[n].type == TYPE_GAME_GC_EXTRACTED || Settings.GCInstallCompressed)
+ 				return true; // Multi-disc games in extracted form are currently unsupported by DML, no need to check further.
+-			
++
+ 			if(HeaderList[n].disc_no == disc_number) // Disc number already in headerList. If Disc2 is loaded in headerList, then Disc1 is not installed yet
+ 			{
+ 				return true;
+@@ -406,7 +420,7 @@
+ 				char *pathPtr = strrchr(filepath, '/');
+ 				if(pathPtr) *pathPtr = 0;
+ 				snprintf(filepath, sizeof(filepath), "%s/disc2.iso", filepath);
+-				
++
+ 				if(CheckFile(filepath))
+ 					return true;
+ 			}
+@@ -427,7 +441,7 @@
+ 		return false;
+ 
+ 	const char *cpTitle = GameTitles.GetTitle(header);
+-	
++
+ 	if(choice == 2)
+ 	{
+ 		// Load Games from SD card only
+@@ -591,7 +605,7 @@
+ 					// Search month string start position in header
+ 					char *dateStart = NULL;
+ 					const char *month[] = {"Jan ", "Feb ", "Mar ", "Apr ", "May ", "Jun ", "Jui ", "Aug ", "Sep ", "Oct ", "Nov ", "Dec "};
+-					for(u8 m = 0 ; m < 12 ; m++) 
++					for(u8 m = 0 ; m < 12 ; m++)
+ 					{
+ 						dateStart = strstr(NINHeader, month[m]);
+ 						if(dateStart != NULL)
+@@ -599,12 +613,12 @@
+ 					}
+ 					if(dateStart == NULL)
+ 						break;
+-					
++
+ 					dateStart[20] = '\0';
+-					
++
+ 					sprintf(NINBuildDate, "%.20s", dateStart);
+ 					gprintf("Nintendont Build date : %.20s \n", dateStart);
+-					
++
+ 					found = true;
+ 					break;
+ 				}
+@@ -614,7 +628,7 @@
+ 		if(found)
+ 			return 1;
+ 	}
+-	
++
+ 	return 0;
+ }
+ 
+@@ -645,6 +659,6 @@
+ 			free(buffer);
+ 		}
+ 	}
+-	
++
+ 	return NINRev;
+ }
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/cache/cache.cpp usbloadergx-2/source/cache/cache.cpp
+--- usbloadergx-1/source/cache/cache.cpp	1970-01-01 00:00:00.000000000 +0000
++++ usbloadergx-2/source/cache/cache.cpp	2020-11-04 14:45:56.264306789 +0000
+@@ -0,0 +1,332 @@
++/***************************************************************************
++ * Copyright (C) 2020
++ * by oddx
++ *
++ * Credits go to:
++ * geoGolem for his work on emunand caching
++ ***************************************************************************/
++#include "cache.hpp"
++#include <fstream>
++#include "usbloader/disc.h"
++#include "settings/CSettings.h"
++#include "FileOperations/fileops.h"
++#include "memory/memory.h"
++#include "Channels/channels.h"
++#include "usbloader/GameList.h"
++#include "GameCube/GCGames.h"
++#include <dirent.h>
++
++void ResetGameHeaderCache()
++{
++    RemoveDirectory(Settings.GameHeaderCachePath);
++    return;
++}
++
++// EMUNAND
++void SaveGameHeaderCache(vector<struct discHdr> &list)
++{
++	string path = string(Settings.GameHeaderCachePath) + EMUNAND_HEADER_CACHE_FILE;
++
++    if (!CheckFile(Settings.GameHeaderCachePath)) CreateSubfolder(Settings.GameHeaderCachePath);
++
++	FILE * cache = fopen(path.c_str(), "wb");
++
++	if(!cache) return;
++
++	fwrite((void *)&list[0], 1, list.size() * sizeof(struct discHdr), cache);
++
++	fclose(cache);
++}
++
++void LoadGameHeaderCache(vector<struct discHdr> &list)
++{
++	string path = string(Settings.GameHeaderCachePath) + EMUNAND_HEADER_CACHE_FILE;
++
++	FILE * cache = fopen(path.c_str(), "rb");
++
++	if(!cache) return;
++
++	struct discHdr tmp;
++	fseek(cache, 0, SEEK_END);
++	u64 fileSize = ftell(cache);
++	fseek(cache, 0, SEEK_SET);
++
++	u32 count = (u32)(fileSize / sizeof(struct discHdr));
++
++	list.reserve(count + list.size());
++	for(u32 i = 0; i < count; i++)
++	{
++		fseek(cache, i * sizeof(struct discHdr), SEEK_SET);
++		fread((void *)&tmp, 1, sizeof(struct discHdr), cache);
++		list.push_back(tmp);
++	}
++
++	fclose(cache);
++}
++
++
++// Wii
++void SaveGameHeaderCache(vector<struct discHdr> &list, vector<int> &plist)
++{
++    vector<struct wiiCache> wiictmp;
++    struct wiiCache gtmp;
++
++    for (u32 i = 0; i < list.size(); ++i)
++	{
++        memset(&gtmp, 0, sizeof(struct wiiCache));
++        gtmp.header = list[i];
++        gtmp.part = plist[i];
++        wiictmp.push_back(gtmp);
++	}
++
++	string path = string(Settings.GameHeaderCachePath) + WII_HEADER_CACHE_FILE;
++
++    if (!CheckFile(Settings.GameHeaderCachePath)) CreateSubfolder(Settings.GameHeaderCachePath);
++
++	FILE * cache = fopen(path.c_str(), "wb");
++
++	if(!cache) return;
++
++	fwrite((void *)&wiictmp[0], 1, wiictmp.size() * sizeof(struct wiiCache), cache);
++
++	fclose(cache);
++}
++
++void LoadGameHeaderCache(vector<struct discHdr> &list, vector<int> &plist)
++{
++	string path = string(Settings.GameHeaderCachePath) + WII_HEADER_CACHE_FILE;
++
++	FILE * cache = fopen(path.c_str(), "rb");
++
++	if(!cache) return;
++
++	struct wiiCache wiictmp;
++	fseek(cache, 0, SEEK_END);
++	u64 fileSize = ftell(cache);
++	fseek(cache, 0, SEEK_SET);
++
++	u32 count = (u32)(fileSize / sizeof(struct wiiCache));
++
++	list.reserve(count + list.size());
++	plist.reserve(count + plist.size());
++	for(u32 i = 0; i < count; i++)
++	{
++		fseek(cache, i * sizeof(struct wiiCache), SEEK_SET);
++		fread((void *)&wiictmp, 1, sizeof(struct wiiCache), cache);
++		list.push_back(wiictmp.header);
++		plist.push_back(wiictmp.part);
++	}
++
++	fclose(cache);
++}
++
++// GAMECUBE
++void SaveGameHeaderCache(vector<struct discHdr> &list, vector<string> &plist)
++{
++    vector<struct gcCache> gcctmp;
++    struct gcCache gtmp;
++
++
++    for (u32 i = 0; i < list.size(); ++i)
++	{
++        memset(&gtmp, 0, sizeof(gcCache));
++        gtmp.header = list[i];
++
++        strcpy( (char*) gtmp.path, plist[i].c_str() );
++
++        gcctmp.push_back(gtmp);
++	}
++
++	string path = string(Settings.GameHeaderCachePath) + GAMECUBE_HEADER_CACHE_FILE;
++
++    if (!CheckFile(Settings.GameHeaderCachePath)) CreateSubfolder(Settings.GameHeaderCachePath);
++
++	FILE * cache = fopen(path.c_str(), "wb");
++
++	if(!cache) return;
++
++	fwrite((void *)&gcctmp[0], 1, gcctmp.size() * sizeof(struct gcCache), cache);
++
++	fclose(cache);
++}
++
++void LoadGameHeaderCache(vector<struct discHdr> &list, vector<string> &plist)
++{
++	string path = string(Settings.GameHeaderCachePath) + GAMECUBE_HEADER_CACHE_FILE;
++
++	FILE * cache = fopen(path.c_str(), "rb");
++
++	if(!cache) return;
++
++	struct gcCache gcctmp;
++	fseek(cache, 0, SEEK_END);
++	u64 fileSize = ftell(cache);
++	fseek(cache, 0, SEEK_SET);
++
++	u32 count = (u32)(fileSize / sizeof(struct gcCache));
++
++	list.reserve(count + list.size());
++	plist.reserve(count + plist.size());
++	for(u32 i = 0; i < count; i++)
++	{
++		fseek(cache, i * sizeof(struct gcCache), SEEK_SET);
++		fread((void *)&gcctmp, 1, sizeof(struct gcCache), cache);
++		list.push_back(gcctmp.header);
++
++	    string tmp((char*)gcctmp.path);
++		plist.push_back(tmp);
++	}
++	fclose(cache);
++}
++
++void SaveFilteredListCache(vector<struct discHdr *> &list, const wchar_t * gameFilter)
++{
++
++	string path = string(Settings.GameHeaderCachePath) + FilteredListCacheFileName(gameFilter);
++
++    if (!CheckFile(Settings.GameHeaderCachePath)) CreateSubfolder(Settings.GameHeaderCachePath);
++
++	FILE * cache = fopen(path.c_str(), "wb");
++
++	if(!cache) return;
++
++    vector<struct gameHdr> tmplist;
++    struct gameHdr tmp;
++
++	for (u32 i = 0; i < list.size(); ++i)
++	{
++        memcpy(tmp.id, list[i]->id, 6);
++        tmplist.push_back(tmp);
++	}
++
++
++	fwrite((void *)&tmplist[0], 1, tmplist.size() * sizeof(struct gameHdr), cache);
++
++	fclose(cache);
++}
++
++void LoadFilteredListCache(vector<struct discHdr *> &list, const wchar_t * gameFilter)
++{
++
++	string path = string(Settings.GameHeaderCachePath) + FilteredListCacheFileName(gameFilter);
++
++    if (!CheckFile(Settings.GameHeaderCachePath)) CreateSubfolder(Settings.GameHeaderCachePath);
++
++	FILE * cache = fopen(path.c_str(), "rb");
++
++	if(!cache) return;
++
++    struct gameHdr tmp;
++
++	fseek(cache, 0, SEEK_END);
++	u64 fileSize = ftell(cache);
++	fseek(cache, 0, SEEK_SET);
++
++	u32 count = (u32)(fileSize / sizeof(struct gameHdr));
++
++	list.reserve(count + list.size());
++	for(u32 i = 0; i < count; i++)
++	{
++	    bool found = false;
++		fseek(cache, i * sizeof(struct gameHdr), SEEK_SET);
++		fread((void *)&tmp, 1, sizeof(struct gameHdr), cache);
++
++		if(!found){
++            vector<struct discHdr> & tmplist = gameList.GetFullGameList();
++            for (u32 c = 0; c < tmplist.size(); ++c)
++            {
++                struct discHdr *header = &tmplist[c];
++
++                if(strncasecmp((const char *) tmp.id, (const char *) header->id, 6) == 0)
++                {
++                    list.push_back(header);
++                    found = true;
++                    break;
++                }
++            }
++		}
++
++		if(!found){
++            vector<struct discHdr> & tmplist = GCGames::Instance()->GetHeaders();
++            for (u32 c = 0; c < tmplist.size(); ++c)
++            {
++                struct discHdr *header = &tmplist[c];
++
++                if(strncasecmp((const char *) tmp.id, (const char *) header->id, 6) == 0)
++                {
++                    list.push_back(header);
++                    found = true;
++                    break;
++                }
++            }
++		}
++
++		if(!found){
++            vector<struct discHdr> & tmplist = Channels::Instance()->GetNandHeaders();
++            for (u32 c = 0; c < tmplist.size(); ++c)
++            {
++                struct discHdr *header = &tmplist[c];
++
++                if(strncasecmp((const char *) tmp.id, (const char *) header->id, 6) == 0)
++                {
++                    list.push_back(header);
++                    found = true;
++                    break;
++                }
++            }
++		}
++
++		if(!found){
++            vector<struct discHdr> & tmplist = Channels::Instance()->GetEmuHeaders();
++            for (u32 c = 0; c < tmplist.size(); ++c)
++            {
++                struct discHdr *header = &tmplist[c];
++
++                if(strncasecmp((const char *) tmp.id, (const char *) header->id, 6) == 0)
++                {
++                    list.push_back(header);
++                    found = true;
++                    break;
++                }
++            }
++		}
++	}
++
++	fclose(cache);
++}
++
++string FilteredListCacheFileName(const wchar_t * gameFilter)
++{
++    string tmp;
++    tmp = "FL";
++    tmp += "_" + to_string(Settings.LoaderMode);
++    tmp += "_" + to_string(Settings.GameSort);
++    if (gameFilter){
++        wstring ws(gameFilter);
++        string gf(ws.begin(),ws.end());
++        if((gf.length()) > 0)
++            tmp += "_" + gf;
++    }
++    tmp += ".cache";
++    return tmp;
++}
++
++string FilteredListCacheFileName()
++{
++    string tmp;
++    tmp = "FL";
++    tmp += "_" + to_string(Settings.LoaderMode);
++    tmp += "_" + to_string(Settings.GameSort);
++    tmp += ".cache";
++    return tmp;
++}
++
++bool isCacheFile(string filename)
++{
++    string path = string(Settings.GameHeaderCachePath) + filename;
++
++    if(CheckFile(path.c_str()))
++        return true;
++
++    return false;
++}
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/cache/cache.hpp usbloadergx-2/source/cache/cache.hpp
+--- usbloadergx-1/source/cache/cache.hpp	1970-01-01 00:00:00.000000000 +0000
++++ usbloadergx-2/source/cache/cache.hpp	2020-11-04 14:45:56.264306789 +0000
+@@ -0,0 +1,52 @@
++#define WII_HEADER_CACHE_FILE "WII.cache"
++#define GAMECUBE_HEADER_CACHE_FILE "GAMECUBE.cache"
++#define EMUNAND_HEADER_CACHE_FILE "EMUNAND.cache"
++
++#include "usbloader/disc.h"
++#include "settings/CSettings.h"
++
++
++using namespace std;
++
++struct gameHdr
++{
++        /* Game ID */
++        u8 id[6];
++
++        /* Padding */
++        u8 unused3[2];
++};
++
++struct wiiCache
++{
++    struct discHdr header;
++    int part;
++};
++
++struct gcCache
++{
++    struct discHdr header;
++    u8 path[200];
++};
++
++
++// EMUNAND
++void SaveGameHeaderCache(vector<struct discHdr> &list);
++void LoadGameHeaderCache(vector<struct discHdr> &list);
++
++// Wii
++void SaveGameHeaderCache(vector<struct discHdr> &list, vector<int> &plist);
++void LoadGameHeaderCache(vector<struct discHdr> &list, vector<int> &plist);
++
++// GameCube
++void SaveGameHeaderCache(vector<struct discHdr> &list, vector<string> &plist);
++void LoadGameHeaderCache(vector<struct discHdr> &list, vector<string> &plist);
++
++void ResetGameHeaderCache();
++
++void SaveFilteredListCache(vector<struct discHdr *> &list, const wchar_t * gameFilter);
++void LoadFilteredListCache(vector<struct discHdr *> &list, const wchar_t * gameFilter);
++
++string FilteredListCacheFileName(const wchar_t * gameFilter);
++string FilteredListCacheFileName();
++bool isCacheFile(string filename);
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/cheats/cheatdl.cpp usbloadergx-2/source/cheats/cheatdl.cpp
+--- usbloadergx-1/source/cheats/cheatdl.cpp	1970-01-01 00:00:00.000000000 +0000
++++ usbloadergx-2/source/cheats/cheatdl.cpp	2020-11-04 14:45:56.214305044 +0000
+@@ -0,0 +1,96 @@
++/***************************************************************************
++ * Copyright (C) 2020
++ * by oddx
++ ***************************************************************************/
++#include <string.h>
++#include "usbloader/disc.h"
++#include "settings/CSettings.h"
++#include "language/gettext.h"
++#include "network/networkops.h"
++#include "network/http.h"
++#include "prompts/PromptWindows.h"
++#include "FileOperations/fileops.h"
++#include "prompts/ProgressWindow.h"
++#include "cheats/cheatdl.h"
++#include "Channels/channels.h"
++#include "usbloader/GameList.h"
++#include "GameCube/GCGames.h"
++
++void GetMissingCheatCodes()
++{
++    if (!CreateSubfolder(Settings.TxtCheatcodespath))
++	{
++		WindowPrompt(tr( "Error !" ), tr( "Can't create directory" ), tr( "OK" ));
++		return;
++	}
++
++    int dlcount = 0;
++	if (!IsNetworkInit()) Initialize_Network();
++
++	if (IsNetworkInit())
++	{
++        ProgressCancelEnable(true);
++        StartProgress(tr("Downloading Cheat Codes..."), tr("Please wait"), 0, false, false);
++        ShowProgress(0, 1);
++
++        vector<struct discHdr> fulllist;
++        vector<struct discHdr> & WiiList = gameList.GetFullGameList();
++        vector<struct discHdr> & GCList = GCGames::Instance()->GetHeaders();
++        vector<struct discHdr> & NANDList = Channels::Instance()->GetNandHeaders();
++        vector<struct discHdr> & EmuList = Channels::Instance()->GetEmuHeaders();
++        fulllist.reserve(WiiList.size() + GCList.size() + NANDList.size() + EmuList.size());
++        fulllist.insert(fulllist.end(), WiiList.begin(), WiiList.end());
++        fulllist.insert(fulllist.end(), GCList.begin(), GCList.end());
++        fulllist.insert(fulllist.end(), NANDList.begin(), NANDList.end());
++        fulllist.insert(fulllist.end(), EmuList.begin(), EmuList.end());
++
++        u32 fileCount = fulllist.size();
++        for (u32 i = 0; i < fileCount; ++i)
++        {
++            if(ProgressCanceled()) {
++				break;
++            }
++
++            struct discHdr *header = &fulllist[i];
++
++            char txtpath[250];
++            snprintf(txtpath, sizeof(txtpath), "%s%s.txt", Settings.TxtCheatcodespath, header->id);
++
++            char txtstatus[25];
++            snprintf(txtstatus, sizeof(txtstatus), "Downloading...%d/%d", (int)i, (int)fileCount);
++
++            ShowProgress(txtstatus, (char*)header->id, 0, i, fileCount, false, false);
++
++            if(CheckFile(txtpath)) continue;
++
++            char codeurl[250];
++            snprintf(codeurl, sizeof(codeurl), "http://web.archive.org/web/1000id_/geckocodes.org/txt.php?txt=%s", header->id);
++
++            struct block file = downloadfile(codeurl);
++
++            if (file.data != NULL)
++            {
++                if (strncmp((char*)file.data, (char*)header->id,4) == 0)
++                {
++                    FILE * pfile = fopen(txtpath, "wb");
++                    if(pfile)
++                    {
++                        fwrite(file.data, 1, file.size, pfile);
++                        fclose(pfile);
++                        dlcount++;
++                    }
++                }
++
++            }
++            free(file.data);
++        }
++
++    }
++
++    char dlcounttxt[5];
++    snprintf(dlcounttxt, sizeof(dlcounttxt), "%d", dlcount);
++    WindowPrompt(tr( "Cheat Code Files Downloaded:" ), dlcounttxt, tr( "OK" ));
++
++	ProgressStop();
++	ProgressCancelEnable(false);
++}
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/cheats/cheatdl.h usbloadergx-2/source/cheats/cheatdl.h
+--- usbloadergx-1/source/cheats/cheatdl.h	1970-01-01 00:00:00.000000000 +0000
++++ usbloadergx-2/source/cheats/cheatdl.h	2020-11-04 14:45:56.214305044 +0000
+@@ -0,0 +1,3 @@
++using namespace std;
++
++void GetMissingCheatCodes();
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/menu/menu_install.cpp usbloadergx-2/source/menu/menu_install.cpp
+--- usbloadergx-1/source/menu/menu_install.cpp	2020-11-04 14:45:29.133363150 +0000
++++ usbloadergx-2/source/menu/menu_install.cpp	2020-11-04 14:45:56.237639192 +0000
+@@ -11,6 +11,7 @@
+ #include "themes/CTheme.h"
+ #include "utils/tools.h"
+ #include "system/IosLoader.h"
++#include "cache/cache.hpp"
+ 
+ #define WII_MAGIC   0x5D1C9EA3
+ 
+@@ -76,7 +77,7 @@
+ 		destination = WindowPrompt(tr("Where should the game be installed to?"), 0, tr("Main Path"), tr("SD Path"), tr("Cancel"));
+ 	if(!destination)
+ 		return MENU_DISCLIST;
+-		
++
+ 	//! Alert the user if he is dumping on SD with DIOS MIOS (USB) installed
+ 	if(destination == 2 && IosLoader::GetMIOSInfo() == DIOS_MIOS)
+ 	{
+@@ -287,6 +288,7 @@
+ 			else
+ 			{
+ 				ShowProgress(tr("Install finished"), headerdisc.title, tr("Reloading game list now, please wait..."), gamesize, gamesize, true, true);
++				ResetGameHeaderCache();
+ 				gameList.ReadGameList(); //get the entries again
+ 				gameList.FilterList();
+ 				bgMusic->Pause();
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/prompts/PromptWindows.cpp usbloadergx-2/source/prompts/PromptWindows.cpp
+--- usbloadergx-1/source/prompts/PromptWindows.cpp	2020-11-04 14:45:29.433373554 +0000
++++ usbloadergx-2/source/prompts/PromptWindows.cpp	2020-11-04 14:45:56.210971595 +0000
+@@ -263,7 +263,7 @@
+ 	backBtn.SetPosition(-20, -20);
+ 	backBtn.SetTrigger(&trigA);
+ 	backBtn.SetTrigger(&trigB);
+-	
++
+ 	u32 i = 0;
+ 	int y = 20;
+ 	float oldFontScale = Settings.FontScaleFactor;
+@@ -307,7 +307,7 @@
+ 	if(info)
+ 		snprintf(IosInfo, sizeof(IosInfo), "(%s v%i%s base%i)", info->name, (int)info->version, info->versionstring, (int)info->baseios);
+ 
+-	// Check if DIOS MIOS (Lite) is available 
++	// Check if DIOS MIOS (Lite) is available
+ 	char GCInfo[80] = "";
+ 	int currentMIOS = IosLoader::GetMIOSInfo();
+ 	if(currentMIOS == DIOS_MIOS)
+@@ -318,7 +318,7 @@
+ 		snprintf(GCInfo, sizeof(GCInfo), "QuadForce %s", DMLVersions[IosLoader::GetDMLVersion()]);
+ 	else if (currentMIOS == QUADFORCE_USB)
+ 		snprintf(GCInfo, sizeof(GCInfo), "QuadForce USB %s", DMLVersions[IosLoader::GetDMLVersion()]);
+-		
++
+ 	// Check if Devolution is available
+ 	char DEVO_loader_path[100];
+ 	snprintf(DEVO_loader_path, sizeof(DEVO_loader_path), "%sloader.bin", Settings.DEVOLoaderPath);
+@@ -562,7 +562,7 @@
+ 		starImg.SetAngle(angle);
+ 	}
+ 	backBtn.ResetState();
+-	
++
+ 	creditsMusic->Stop();
+ 
+ 	delete creditsMusic;
+@@ -1459,9 +1459,8 @@
+ 		snprintf(txtpath, sizeof(txtpath), "%s%s.txt", Settings.TxtCheatcodespath, id);
+ 
+ 		char codeurl[250];
+-		snprintf(codeurl, sizeof(codeurl), "http://geckocodes.org/txt.php?txt=%s", id);
+-		//snprintf(codeurl, sizeof(codeurl), "http://geckocodes.org/codes/G/%s.txt", id);
+-		
++		snprintf(codeurl, sizeof(codeurl), "http://web.archive.org/web/1000id_/geckocodes.org/txt.php?txt=%s", id);
++
+ 		struct block file = downloadfile(codeurl);
+ 
+ 		if (file.data != NULL)
+@@ -1491,7 +1490,7 @@
+ 				{
+ 					fwrite(file.data, 1, file.size, pfile);
+ 					fclose(pfile);
+-					
++
+ 					// verify downloaded content - thanks airline38
+ 					pfile = fopen(txtpath, "rb");
+ 					if(pfile)
+@@ -1539,4 +1538,3 @@
+ 
+ 	return ret;
+ }
+-
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/prompts/PromptWindows.h usbloadergx-2/source/prompts/PromptWindows.h
+--- usbloadergx-1/source/prompts/PromptWindows.h	2020-11-04 14:45:29.820053628 +0000
++++ usbloadergx-2/source/prompts/PromptWindows.h	2020-11-04 14:45:56.210971595 +0000
+@@ -22,5 +22,4 @@
+ bool NetworkInitPrompt();
+ int WindowScreensaver();
+ int CodeDownload(const char *id);
+-
+ #endif
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/settings/CSettings.cpp usbloadergx-2/source/settings/CSettings.cpp
+--- usbloadergx-1/source/settings/CSettings.cpp	2020-11-04 14:45:29.133363150 +0000
++++ usbloadergx-2/source/settings/CSettings.cpp	2020-11-04 14:45:56.227638843 +0000
+@@ -63,6 +63,7 @@
+ 	snprintf(languagefiles_path, sizeof(languagefiles_path), "%slanguage/", ConfigPath);
+ 	snprintf(update_path, sizeof(update_path), "%s/apps/usbloader_gx/", BootDevice);
+ 	snprintf(BNRCachePath, sizeof(BNRCachePath), "%s/apps/usbloader_gx/cache_bnr/", BootDevice);
++	snprintf(GameHeaderCachePath, sizeof(GameHeaderCachePath), "%s/apps/usbloader_gx/cache/", BootDevice);
+ 	snprintf(homebrewapps_path, sizeof(homebrewapps_path), "%s/apps/", BootDevice);
+ 	snprintf(Cheatcodespath, sizeof(Cheatcodespath), "%s/codes/", BootDevice);
+ 	snprintf(TxtCheatcodespath, sizeof(TxtCheatcodespath), "%s/txtcodes/", BootDevice);
+@@ -124,6 +125,7 @@
+ 	musicloopmode = ON;
+ 	marknewtitles = ON;
+ 	ShowFreeSpace = ON;
++	UseGameHeaderCache = ON;
+ 	PlaylogUpdate = OFF;
+ 	ParentalBlocks = BLOCK_ALL;
+ 	InstallToDir = INSTALL_TO_NAME_GAMEID;
+@@ -344,6 +346,7 @@
+ 	fprintf(file, "update_path = %s\n", update_path);
+ 	fprintf(file, "homebrewapps_path = %s\n", homebrewapps_path);
+ 	fprintf(file, "BNRCachePath = %s\n", BNRCachePath);
++	fprintf(file, "GameHeaderCachePath = %s\n", GameHeaderCachePath);
+ 	fprintf(file, "Cheatcodespath = %s\n", Cheatcodespath);
+ 	fprintf(file, "BcaCodepath = %s\n", BcaCodepath);
+ 	fprintf(file, "WipCodepath = %s\n", WipCodepath);
+@@ -359,6 +362,7 @@
+ 	fprintf(file, "partition = %d\n", partition);
+ 	fprintf(file, "marknewtitles = %d\n", marknewtitles);
+ 	fprintf(file, "ShowFreeSpace = %d\n", ShowFreeSpace);
++	fprintf(file, "UseGameHeaderCache = %d\n", UseGameHeaderCache);
+ 	fprintf(file, "InstallToDir = %d\n", InstallToDir);
+ 	fprintf(file, "GameSplit = %d\n", GameSplit);
+ 	fprintf(file, "InstallPartitions = %08X\n", (unsigned int)InstallPartitions);
+@@ -676,6 +680,11 @@
+ 		ShowFreeSpace = atoi(value);
+ 		return true;
+ 	}
++	else if (strcmp(name, "UseGameHeaderCache") == 0)
++	{
++		UseGameHeaderCache = atoi(value);
++		return true;
++	}
+ 	else if (strcmp(name, "HomeMenu") == 0)
+ 	{
+ 		HomeMenu = atoi(value);
+@@ -1180,6 +1189,11 @@
+ 		strlcpy(BNRCachePath, value, sizeof(BNRCachePath));
+ 		return true;
+ 	}
++	else if (strcmp(name, "GameHeaderCachePath") == 0)
++	{
++		strlcpy(GameHeaderCachePath, value, sizeof(GameHeaderCachePath));
++		return true;
++	}
+ 	else if (strcmp(name, "Cheatcodespath") == 0)
+ 	{
+ 		strlcpy(Cheatcodespath, value, sizeof(Cheatcodespath));
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/settings/CSettings.h usbloadergx-2/source/settings/CSettings.h
+--- usbloadergx-1/source/settings/CSettings.h	2020-11-04 14:45:27.729981167 +0000
++++ usbloadergx-2/source/settings/CSettings.h	2020-11-04 14:45:56.227638843 +0000
+@@ -85,6 +85,7 @@
+ 		char NandEmuPath[50];
+ 		char NandEmuChanPath[50];
+ 		char BNRCachePath[50];
++		char GameHeaderCachePath[50];
+ 		char GameCubePath[100];
+ 		char GameCubeSDPath[100];
+ 		char DEVOLoaderPath[100];
+@@ -129,6 +130,7 @@
+ 		short GameSplit;
+ 		short PlaylogUpdate;
+ 		short ShowFreeSpace;
++		short UseGameHeaderCache;
+ 		short HomeMenu;
+ 		short MultiplePartitions;
+ 		short USBPort;
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/settings/menus/CustomPathsSM.cpp usbloadergx-2/source/settings/menus/CustomPathsSM.cpp
+--- usbloadergx-1/source/settings/menus/CustomPathsSM.cpp	2020-11-04 14:45:27.729981167 +0000
++++ usbloadergx-2/source/settings/menus/CustomPathsSM.cpp	2020-11-04 14:45:56.234305742 +0000
+@@ -65,6 +65,7 @@
+ 	Options->SetName(Idx++, tr("Devolution Loader Path"));
+ 	Options->SetName(Idx++, tr("Nintendont Loader Path"));
+ 	Options->SetName(Idx++, tr("Cache BNR Files Path"));
++	Options->SetName(Idx++, tr("Game Header Cache Files Path"));
+ 
+ 	SetOptionValues();
+ }
+@@ -141,6 +142,9 @@
+ 
+ 	//! Settings: Cache BNR Files Path
+ 	Options->SetValue(Idx++, Settings.BNRCachePath);
++
++	//! Settings: Game Header Cache Files Path
++	Options->SetValue(Idx++, Settings.GameHeaderCachePath);
+ }
+ 
+ int CustomPathsSM::GetMenuInternal()
+@@ -204,7 +208,7 @@
+ 					MoveDbFile(oldPath, Settings.titlestxt_path, "TitlesCache.bin");
+ 					MoveDbFile(oldPath, Settings.titlestxt_path, "wiitdb_offsets.bin");
+ 					MoveDbFile(oldPath, Settings.titlestxt_path, "GameTimestamps.txt");
+-				
++
+ 					WindowPrompt(tr("Process finished."), 0, tr("OK"));
+ 				}
+ 			}
+@@ -368,6 +372,13 @@
+ 		ChangePath(Settings.BNRCachePath, sizeof(Settings.BNRCachePath));
+ 	}
+ 
++	//! Settings: Game Header Cache Files Path
++	else if (ret == ++Idx)
++	{
++		titleTxt->SetText(tr( "Game Header Cache Files Path" ));
++		ChangePath(Settings.GameHeaderCachePath, sizeof(Settings.GameHeaderCachePath));
++	}
++
+ 	//! Global set back of the titleTxt after a change
+ 	titleTxt->SetText(tr( "Custom Paths" ));
+ 	SetOptionValues();
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/settings/menus/FeatureSettingsMenu.cpp usbloadergx-2/source/settings/menus/FeatureSettingsMenu.cpp
+--- usbloadergx-1/source/settings/menus/FeatureSettingsMenu.cpp	2020-11-04 14:45:27.733314616 +0000
++++ usbloadergx-2/source/settings/menus/FeatureSettingsMenu.cpp	2020-11-04 14:45:56.230972292 +0000
+@@ -64,6 +64,7 @@
+ 	int Idx = 0;
+ 	Options->SetName(Idx++, "%s", tr( "Titles from GameTDB" ));
+ 	Options->SetName(Idx++, "%s", tr( "Cache Titles" ));
++	Options->SetName(Idx++, "%s", tr( "Use Game Header Cache" ));
+ 	Options->SetName(Idx++, "%s", tr( "Force Titles from Disc" ));
+ 	Options->SetName(Idx++, "%s", tr( "Wiilight" ));
+ 	Options->SetName(Idx++, "%s", tr( "Rumble" ));
+@@ -120,6 +121,9 @@
+ 	//! Settings: Cache Titles
+ 	Options->SetValue(Idx++, "%s", tr( OnOffText[Settings.CacheTitles] ));
+ 
++	//! Settings: Use Game Header Cache
++	Options->SetValue(Idx++, "%s", tr( OnOffText[Settings.UseGameHeaderCache] ));
++
+ 	//! Settings: Force Titles from Disc
+ 	Options->SetValue(Idx++, "%s", tr( OnOffText[Settings.ForceDiscTitles] ));
+ 
+@@ -189,6 +193,12 @@
+ 		if (++Settings.CacheTitles >= MAX_ON_OFF) Settings.CacheTitles = 0;
+ 	}
+ 
++	//! Settings: Use Game Header Cache
++	else if (ret == ++Idx)
++	{
++		if (++Settings.UseGameHeaderCache >= MAX_ON_OFF) Settings.UseGameHeaderCache = 0;
++	}
++
+ 	//! Settings: Force Titles from Disc
+ 	else if (ret == ++Idx)
+ 	{
+@@ -496,7 +506,7 @@
+ 
+ 		char wadpath[150];
+ 		snprintf(wadpath, sizeof(wadpath), "%s/wad/", Settings.BootDevice);
+-		
++
+ 		int choice = WindowPrompt(tr("EmuNAND Wad Manager"), tr("Which mode do you want to use?"), tr("File"), tr("Folder"), tr("Cancel"));
+ 		if(choice == 1) 			// File mode
+ 		{
+@@ -520,7 +530,7 @@
+ 					Wad wadFile(wadpath);
+ 					wadFile.UnInstall(Settings.NandEmuChanPath);
+ 				}
+-				
++
+ 				// Refresh new EmuNAND content
+ 				Channels::Instance()->GetEmuChannelList();
+ 				GameTitles.LoadTitlesFromGameTDB(Settings.titlestxt_path);
+@@ -596,7 +606,7 @@
+ 									fprintf(f, "\r\n\r\nEmuNAND Wad Manager - %10s\r\n--------------------------------\r\n", theTime);
+ 									fprintf(f, "%s %s\r\n", choice == 1 ? "Error installing to" : "Error uninstalling from", Settings.NandEmuChanPath);
+ 									fprintf(f, "%s\r\n", choice == 1 ? "List of user canceled installation or bad wad files." : "Titles not on EmuNAND or weren't correctly installed.");
+-									
++
+ 									for(int i = 0; i < wadList->GetFilecount(); i++)
+ 									{
+ 										fprintf(f, "%s\r\n", wadList->GetFilepath(i));
+@@ -608,9 +618,9 @@
+ 								else
+ 									WindowPrompt(tr( "EmuNAND Wad Manager" ), tr("Error writing the data."), tr( "OK" ));
+ 							}
+-						}		
++						}
+ 					}
+-						
++
+ 					// Refresh new EmuNAND content
+ 					Channels::Instance()->GetEmuChannelList();
+ 					GameTitles.LoadTitlesFromGameTDB(Settings.titlestxt_path);
+@@ -619,7 +629,7 @@
+ 				{
+ 					WindowPrompt(tr( "EmuNAND Wad Manager" ), tr("No wad file found in this folder."), tr( "OK" ));
+ 				}
+-				
++
+ 				delete wadList;
+ 			}
+ 		}
+@@ -636,7 +646,7 @@
+ 		snprintf(NINUpdatePath, sizeof(NINUpdatePath), "%sboot.dol", Settings.NINLoaderPath);
+ 		char NINUpdatePathBak[100];
+ 		snprintf(NINUpdatePathBak, sizeof(NINUpdatePathBak), "%sboot.bak", Settings.NINLoaderPath);
+-		
++
+ 		int choice = WindowPrompt(tr( "Do you want to update this file?" ), NINUpdatePath, tr( "Yes" ), tr( "Cancel" ));
+ 		if (choice == 1)
+ 		{
+@@ -649,7 +659,7 @@
+ 				// Rename existing boot.dol file to boot.bak
+ 				if(CheckFile(NINUpdatePath))
+ 					RenameFile(NINUpdatePath, NINUpdatePathBak);
+-				
++
+ 				// Download latest loader.dol as boot.dol
+ 				bool success = false;
+ 				displayDownloadProgress(true); // enable progress window for next download
+@@ -666,10 +676,10 @@
+ 					}
+ 					else
+ 						WindowPrompt(tr( "Update failed" ), 0, tr( "OK" ));
+-					
++
+ 					free(file.data);
+ 				}
+-					
++
+ 				if(success)
+ 				{
+ 					//remove existing loader.dol file if found as it has priority over boot.dol, and boot.bak
+@@ -726,7 +736,7 @@
+ 				ExitApp();
+ 				NEEK_CFG *neek_config = (NEEK_CFG *) NEEK_CONFIG_ADDRESS;
+ 				neek2oSetBootSettings(neek_config, 0 /* TitleID */ , 0 /* Magic */, 0 /* Returnto TitleID */, Settings.NandEmuChanPath /* Full EmuNAND path */);
+-				
++
+ 				if(neekBoot() == -1)
+ 					Sys_BackToLoader();
+ 				return MENU_NONE;
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/settings/menus/GlobalSettings.cpp usbloadergx-2/source/settings/menus/GlobalSettings.cpp
+--- usbloadergx-1/source/settings/menus/GlobalSettings.cpp	2020-11-04 14:45:29.136696599 +0000
++++ usbloadergx-2/source/settings/menus/GlobalSettings.cpp	2020-11-04 14:45:56.230972292 +0000
+@@ -34,6 +34,8 @@
+ #include "FeatureSettingsMenu.hpp"
+ #include "HardDriveSM.hpp"
+ #include "BannerSettingsMenu.hpp"
++#include "cache/cache.hpp"
++#include "cheats/cheatdl.h"
+ 
+ GlobalSettings::GlobalSettings()
+ 	: FlyingButtonsMenu(tr("Global Settings"))
+@@ -81,6 +83,8 @@
+ 	SetMainButton(pos++, tr( "Theme Menu" ), MainButtonImgData, MainButtonImgOverData);
+ 	SetMainButton(pos++, tr( "Theme Downloader" ), MainButtonImgData, MainButtonImgOverData);
+ 	SetMainButton(pos++, tr( "Update" ), MainButtonImgData, MainButtonImgOverData);
++	SetMainButton(pos++, tr( "Reset Game Header Cache" ), MainButtonImgData, MainButtonImgOverData);
++	SetMainButton(pos++, tr( "Get Missing Cheat Codes" ), MainButtonImgData, MainButtonImgOverData);
+ 	SetMainButton(pos++, tr( "Default Settings" ), MainButtonImgData, MainButtonImgOverData);
+ 	SetMainButton(pos++, tr( "Credits" ), creditsImgData, creditsImgOverData);
+ }
+@@ -223,10 +227,10 @@
+ 			WindowPrompt(tr( "Permission denied." ), tr( "Console must be unlocked for this option." ), tr( "OK" ));
+ 			return;
+ 		}
+-		
++
+ 		WindowPrompt(tr( "Warning:" ), tr( "Sorry, the theme downloader menu is not working anymore because http://wii.spiffy360.com now requires user registration." ), tr( "OK" ));
+ 			return;
+-		
++
+ 		// returnMenu = MENU_THEMEDOWNLOADER;
+ 	}
+ 	//! Update
+@@ -247,6 +251,39 @@
+ 		Append(backBtn);
+ 		ShowMenu();
+ 	}
++	//! Reset Game Header Cache
++	else if(menuNr == Idx++)
++	{
++		if(!Settings.godmode && (Settings.ParentalBlocks & BLOCK_RESET_SETTINGS))
++		{
++			WindowPrompt(tr( "Permission denied." ), tr( "Console must be unlocked for this option." ), tr( "OK" ));
++			return;
++		}
++		int choice = WindowPrompt(tr( "Are you sure you want to reset?" ), 0, tr( "Yes" ), tr( "Cancel" ));
++		if (choice == 1)
++		{
++			HaltGui();
++			gettextCleanUp();
++			ResetGameHeaderCache();
++			returnMenu = MENU_SETTINGS;
++			ResumeGui();
++		}
++	}
++	//! Get Availible Cheat Codes
++	else if(menuNr == Idx++)
++	{
++		if(!Settings.godmode && (Settings.ParentalBlocks & BLOCK_UPDATES))
++		{
++			WindowPrompt(tr( "Permission denied." ), tr( "Console must be unlocked for this option." ), tr( "OK" ));
++			return;
++		}
++
++        HaltGui();
++        gettextCleanUp();
++        GetMissingCheatCodes();
++        returnMenu = MENU_SETTINGS;
++        ResumeGui();
++	}
+ 	//! Default Settings
+ 	else if(menuNr == Idx++)
+ 	{
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/settings/menus/UninstallSM.cpp usbloadergx-2/source/settings/menus/UninstallSM.cpp
+--- usbloadergx-1/source/settings/menus/UninstallSM.cpp	2020-11-04 14:45:27.729981167 +0000
++++ usbloadergx-2/source/settings/menus/UninstallSM.cpp	2020-11-04 14:45:56.230972292 +0000
+@@ -35,6 +35,7 @@
+ #include "usbloader/wbfs.h"
+ #include "usbloader/GameList.h"
+ #include "wstring.hpp"
++#include "cache/cache.hpp"
+ 
+ UninstallSM::UninstallSM(struct discHdr * header)
+ 	: SettingsMenu(tr("Uninstall Menu"), &GuiOptions, MENU_NONE)
+@@ -127,6 +128,7 @@
+ 			if(ret >= 0)
+ 			{
+ 				wString oldFilter(gameList.GetCurrentFilter());
++				ResetGameHeaderCache();
+ 				gameList.ReadGameList();
+ 				gameList.FilterList(oldFilter.c_str());
+ 			}
+diff --unified --new-file --recursive '--exclude=.git' '--exclude=HBC' --recursive usbloadergx-1/source/usbloader/GameList.cpp usbloadergx-2/source/usbloader/GameList.cpp
+--- usbloadergx-1/source/usbloader/GameList.cpp	2020-11-04 14:45:28.203330908 +0000
++++ usbloadergx-2/source/usbloader/GameList.cpp	2020-11-04 14:45:56.217638494 +0000
+@@ -37,6 +37,7 @@
+ #include "GameList.h"
+ #include "memory/memory.h"
+ #include "Channels/channels.h"
++#include "cache/cache.hpp"
+ 
+ enum { DISABLED, ENABLED, HIDEFORBIDDEN };
+ 
+@@ -156,6 +157,13 @@
+ 
+ int GameList::ReadGameList()
+ {
++    if(Settings.UseGameHeaderCache && isCacheFile(WII_HEADER_CACHE_FILE)){
++        if(FullGameList.empty() && GamePartitionList.empty())
++            LoadGameHeaderCache(FullGameList, GamePartitionList);
++
++        if(!FullGameList.empty()) return (int)FullGameList.size();
++    }
++
+ 	// Clear list
+ 	FullGameList.clear();
+ 	GamePartitionList.clear();
+@@ -180,6 +188,9 @@
+ 		}
+ 	}
+ 
++    if(Settings.UseGameHeaderCache && !FullGameList.empty() && !GamePartitionList.empty()){
++        SaveGameHeaderCache(FullGameList, GamePartitionList);
++    }
+ 	return cnt;
+ }
+ 
+@@ -249,7 +260,7 @@
+ 				break;
+ 			}
+ 		}
+-		
++
+ 		if(allType == DISABLED)
+ 		{
+ 			// Remove TitleID if it contains a forbidden categories
+@@ -260,7 +271,7 @@
+ 			}
+ 			if(n < Settings.ForbiddenCategories.size())
+ 				continue;
+-			
++
+ 			// Remove TitleID is it doesn't contain a required categories
+ 			for(n = 0; n < Settings.RequiredCategories.size(); ++n)
+ 			{
+@@ -269,7 +280,7 @@
+ 			}
+ 			if(n < Settings.RequiredCategories.size())
+ 				continue;
+-			
++
+ 			// If there's no required categories, verify if the TitleID should be kept or removed
+ 			if(Settings.RequiredCategories.size() == 0)
+ 			{
+@@ -282,7 +293,7 @@
+ 					continue;
+ 			}
+ 		}
+-		
++
+ 		if(allType == HIDEFORBIDDEN)
+ 		{
+ 			// Remove TitleID if it contains a forbidden categories
+@@ -294,14 +305,16 @@
+ 			}
+ 			if(n < Settings.ForbiddenCategories.size())
+ 				continue;
+-		}	
+-		
++		}
++
+ 		FilteredList.push_back(header);
+ 	}
+ }
+ 
+ int GameList::FilterList(const wchar_t * gameFilter)
+ {
++    if(Settings.UseGameHeaderCache) ReadGameList();
++
+ 	if((Settings.LoaderMode & MODE_WIIGAMES) && (FullGameList.size() == 0))
+ 		ReadGameList();
+ 
+@@ -310,6 +323,12 @@
+ 
+ 	FilteredList.clear();
+ 
++    if(Settings.UseGameHeaderCache && isCacheFile(FilteredListCacheFileName(gameFilter))){
++        LoadFilteredListCache(FilteredList, GameFilter.c_str());
++        GuiSearchBar::FilterList(FilteredList, GameFilter);
++        if(!FilteredList.empty()) return FilteredList.size();
++    }
++
+ 	// Filter current game list if selected
+ 	if(Settings.LoaderMode & MODE_WIIGAMES)
+ 		InternalFilterList(FullGameList);
+@@ -331,6 +350,9 @@
+ 
+ 	SortList();
+ 
++	if (Settings.UseGameHeaderCache && !FilteredList.empty() && (Settings.GameSort & SORT_RANKING) == 0 && (Settings.GameSort & SORT_PLAYCOUNT) == 0 && (Settings.GameSort & SORT_FAVORITE) == 0)
++        SaveFilteredListCache(FilteredList, GameFilter.c_str());
++
+ 	return FilteredList.size();
+ }
+ 
+@@ -349,12 +371,20 @@
+ 
+ int GameList::LoadUnfiltered()
+ {
++    if(Settings.UseGameHeaderCache) ReadGameList();
++
+ 	if((Settings.LoaderMode & MODE_WIIGAMES) && (FullGameList.size() == 0))
+ 		ReadGameList();
+ 
+ 	GameFilter.clear();
+ 	FilteredList.clear();
+ 
++    if(Settings.UseGameHeaderCache && isCacheFile(FilteredListCacheFileName())){
++        LoadFilteredListCache(FilteredList, GameFilter.c_str());
++        GuiSearchBar::FilterList(FilteredList, GameFilter);
++        if(!FilteredList.empty()) return FilteredList.size();
++    }
++
+ 	// Filter current game list if selected
+ 	if(Settings.LoaderMode & MODE_WIIGAMES)
+ 		InternalLoadUnfiltered(FullGameList);
+@@ -376,6 +406,9 @@
+ 
+ 	SortList();
+ 
++	if (Settings.UseGameHeaderCache && !FilteredList.empty() && (Settings.GameSort & SORT_RANKING) == 0 && (Settings.GameSort & SORT_PLAYCOUNT) == 0  && (Settings.GameSort & SORT_FAVORITE) == 0)
++        SaveFilteredListCache(FilteredList, GameFilter.c_str());
++
+ 	return FilteredList.size();
+ }
+ 

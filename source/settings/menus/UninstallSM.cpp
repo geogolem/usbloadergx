@@ -35,6 +35,7 @@
 #include "usbloader/wbfs.h"
 #include "usbloader/GameList.h"
 #include "wstring.hpp"
+#include "cache/cache.hpp"
 
 UninstallSM::UninstallSM(struct discHdr * header)
 	: SettingsMenu(tr("Uninstall Menu"), &GuiOptions, MENU_NONE)
@@ -127,6 +128,7 @@ int UninstallSM::GetMenuInternal()
 			if(ret >= 0)
 			{
 				wString oldFilter(gameList.GetCurrentFilter());
+				ResetGameHeaderCache();
 				gameList.ReadGameList();
 				gameList.FilterList(oldFilter.c_str());
 			}

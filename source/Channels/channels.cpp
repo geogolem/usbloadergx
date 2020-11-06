@@ -37,6 +37,7 @@
 #include "gecko.h"
 
 #include "channels.h"
+#include "cache/cache.hpp"
 
 typedef struct _dolheader{
 	u32 section_pos[18];
@@ -134,8 +135,19 @@ vector<struct discHdr> & Channels::GetNandHeaders(void)
 
 vector<struct discHdr> & Channels::GetEmuHeaders(void)
 {
+    if(Settings.UseGameHeaderCache && isCacheFile(EMUNAND_HEADER_CACHE_FILE)){
+        if(EmuChannels.empty())
+            LoadGameHeaderCache(EmuChannels);
+
+        if(!EmuChannels.empty()) return EmuChannels;
+    }
+
 	if(EmuChannels.empty())
 		this->GetEmuChannelList();
+
+    if(Settings.UseGameHeaderCache && !EmuChannels.empty()){
+        SaveGameHeaderCache(EmuChannels);
+    }
 
 	return EmuChannels;
 }
@@ -472,7 +484,7 @@ bool Channels::emuExists(char *tmdpath)
 	}
 
 	u32 cid  = titleTmd->contents[i].cid;
-	
+
 	free(buffer);
 
 	char *ptr = strrchr(tmdpath, '/');
@@ -487,7 +499,7 @@ bool Channels::emuExists(char *tmdpath)
 		return false;
 
 	fclose(f);
-	
+
 	return true;
 }
 
@@ -531,7 +543,7 @@ bool Channels::ParseTitleDir(char *path, int language)
 		// check if content in tmd exists
 		if(!emuExists(path))
 			continue;
-			
+
 		u32 tidLow = strtoul(dirent->d_name, NULL, 16);
 		char id[5];
 		memset(id, 0, sizeof(id));

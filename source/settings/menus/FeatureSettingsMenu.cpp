@@ -64,6 +64,7 @@ FeatureSettingsMenu::FeatureSettingsMenu()
 	int Idx = 0;
 	Options->SetName(Idx++, "%s", tr( "Titles from GameTDB" ));
 	Options->SetName(Idx++, "%s", tr( "Cache Titles" ));
+	Options->SetName(Idx++, "%s", tr( "Use Game Header Cache" ));
 	Options->SetName(Idx++, "%s", tr( "Force Titles from Disc" ));
 	Options->SetName(Idx++, "%s", tr( "Wiilight" ));
 	Options->SetName(Idx++, "%s", tr( "Rumble" ));
@@ -119,6 +120,9 @@ void FeatureSettingsMenu::SetOptionValues()
 
 	//! Settings: Cache Titles
 	Options->SetValue(Idx++, "%s", tr( OnOffText[Settings.CacheTitles] ));
+
+	//! Settings: Use Game Header Cache
+	Options->SetValue(Idx++, "%s", tr( OnOffText[Settings.UseGameHeaderCache] ));
 
 	//! Settings: Force Titles from Disc
 	Options->SetValue(Idx++, "%s", tr( OnOffText[Settings.ForceDiscTitles] ));
@@ -187,6 +191,12 @@ int FeatureSettingsMenu::GetMenuInternal()
 	else if (ret == ++Idx)
 	{
 		if (++Settings.CacheTitles >= MAX_ON_OFF) Settings.CacheTitles = 0;
+	}
+
+	//! Settings: Use Game Header Cache
+	else if (ret == ++Idx)
+	{
+		if (++Settings.UseGameHeaderCache >= MAX_ON_OFF) Settings.UseGameHeaderCache = 0;
 	}
 
 	//! Settings: Force Titles from Disc
@@ -496,7 +506,7 @@ int FeatureSettingsMenu::GetMenuInternal()
 
 		char wadpath[150];
 		snprintf(wadpath, sizeof(wadpath), "%s/wad/", Settings.BootDevice);
-		
+
 		int choice = WindowPrompt(tr("EmuNAND Wad Manager"), tr("Which mode do you want to use?"), tr("File"), tr("Folder"), tr("Cancel"));
 		if(choice == 1) 			// File mode
 		{
@@ -520,7 +530,7 @@ int FeatureSettingsMenu::GetMenuInternal()
 					Wad wadFile(wadpath);
 					wadFile.UnInstall(Settings.NandEmuChanPath);
 				}
-				
+
 				// Refresh new EmuNAND content
 				Channels::Instance()->GetEmuChannelList();
 				GameTitles.LoadTitlesFromGameTDB(Settings.titlestxt_path);
@@ -596,7 +606,7 @@ int FeatureSettingsMenu::GetMenuInternal()
 									fprintf(f, "\r\n\r\nEmuNAND Wad Manager - %10s\r\n--------------------------------\r\n", theTime);
 									fprintf(f, "%s %s\r\n", choice == 1 ? "Error installing to" : "Error uninstalling from", Settings.NandEmuChanPath);
 									fprintf(f, "%s\r\n", choice == 1 ? "List of user canceled installation or bad wad files." : "Titles not on EmuNAND or weren't correctly installed.");
-									
+
 									for(int i = 0; i < wadList->GetFilecount(); i++)
 									{
 										fprintf(f, "%s\r\n", wadList->GetFilepath(i));
@@ -608,9 +618,9 @@ int FeatureSettingsMenu::GetMenuInternal()
 								else
 									WindowPrompt(tr( "EmuNAND Wad Manager" ), tr("Error writing the data."), tr( "OK" ));
 							}
-						}		
+						}
 					}
-						
+
 					// Refresh new EmuNAND content
 					Channels::Instance()->GetEmuChannelList();
 					GameTitles.LoadTitlesFromGameTDB(Settings.titlestxt_path);
@@ -619,7 +629,7 @@ int FeatureSettingsMenu::GetMenuInternal()
 				{
 					WindowPrompt(tr( "EmuNAND Wad Manager" ), tr("No wad file found in this folder."), tr( "OK" ));
 				}
-				
+
 				delete wadList;
 			}
 		}
@@ -636,7 +646,7 @@ int FeatureSettingsMenu::GetMenuInternal()
 		snprintf(NINUpdatePath, sizeof(NINUpdatePath), "%sboot.dol", Settings.NINLoaderPath);
 		char NINUpdatePathBak[100];
 		snprintf(NINUpdatePathBak, sizeof(NINUpdatePathBak), "%sboot.bak", Settings.NINLoaderPath);
-		
+
 		int choice = WindowPrompt(tr( "Do you want to update this file?" ), NINUpdatePath, tr( "Yes" ), tr( "Cancel" ));
 		if (choice == 1)
 		{
@@ -649,7 +659,7 @@ int FeatureSettingsMenu::GetMenuInternal()
 				// Rename existing boot.dol file to boot.bak
 				if(CheckFile(NINUpdatePath))
 					RenameFile(NINUpdatePath, NINUpdatePathBak);
-				
+
 				// Download latest loader.dol as boot.dol
 				bool success = false;
 				displayDownloadProgress(true); // enable progress window for next download
@@ -666,10 +676,10 @@ int FeatureSettingsMenu::GetMenuInternal()
 					}
 					else
 						WindowPrompt(tr( "Update failed" ), 0, tr( "OK" ));
-					
+
 					free(file.data);
 				}
-					
+
 				if(success)
 				{
 					//remove existing loader.dol file if found as it has priority over boot.dol, and boot.bak
@@ -726,7 +736,7 @@ int FeatureSettingsMenu::GetMenuInternal()
 				ExitApp();
 				NEEK_CFG *neek_config = (NEEK_CFG *) NEEK_CONFIG_ADDRESS;
 				neek2oSetBootSettings(neek_config, 0 /* TitleID */ , 0 /* Magic */, 0 /* Returnto TitleID */, Settings.NandEmuChanPath /* Full EmuNAND path */);
-				
+
 				if(neekBoot() == -1)
 					Sys_BackToLoader();
 				return MENU_NONE;

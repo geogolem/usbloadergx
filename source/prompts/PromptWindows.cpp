@@ -263,7 +263,7 @@ void WindowCredits()
 	backBtn.SetPosition(-20, -20);
 	backBtn.SetTrigger(&trigA);
 	backBtn.SetTrigger(&trigB);
-	
+
 	u32 i = 0;
 	int y = 20;
 	float oldFontScale = Settings.FontScaleFactor;
@@ -307,7 +307,7 @@ void WindowCredits()
 	if(info)
 		snprintf(IosInfo, sizeof(IosInfo), "(%s v%i%s base%i)", info->name, (int)info->version, info->versionstring, (int)info->baseios);
 
-	// Check if DIOS MIOS (Lite) is available 
+	// Check if DIOS MIOS (Lite) is available
 	char GCInfo[80] = "";
 	int currentMIOS = IosLoader::GetMIOSInfo();
 	if(currentMIOS == DIOS_MIOS)
@@ -318,7 +318,7 @@ void WindowCredits()
 		snprintf(GCInfo, sizeof(GCInfo), "QuadForce %s", DMLVersions[IosLoader::GetDMLVersion()]);
 	else if (currentMIOS == QUADFORCE_USB)
 		snprintf(GCInfo, sizeof(GCInfo), "QuadForce USB %s", DMLVersions[IosLoader::GetDMLVersion()]);
-		
+
 	// Check if Devolution is available
 	char DEVO_loader_path[100];
 	snprintf(DEVO_loader_path, sizeof(DEVO_loader_path), "%sloader.bin", Settings.DEVOLoaderPath);
@@ -562,7 +562,7 @@ void WindowCredits()
 		starImg.SetAngle(angle);
 	}
 	backBtn.ResetState();
-	
+
 	creditsMusic->Stop();
 
 	delete creditsMusic;
@@ -1459,9 +1459,8 @@ int CodeDownload(const char *id)
 		snprintf(txtpath, sizeof(txtpath), "%s%s.txt", Settings.TxtCheatcodespath, id);
 
 		char codeurl[250];
-		snprintf(codeurl, sizeof(codeurl), "http://geckocodes.org/txt.php?txt=%s", id);
-		//snprintf(codeurl, sizeof(codeurl), "http://geckocodes.org/codes/G/%s.txt", id);
-		
+		snprintf(codeurl, sizeof(codeurl), "http://web.archive.org/web/1000id_/geckocodes.org/txt.php?txt=%s", id);
+
 		struct block file = downloadfile(codeurl);
 
 		if (file.data != NULL)
@@ -1491,7 +1490,7 @@ int CodeDownload(const char *id)
 				{
 					fwrite(file.data, 1, file.size, pfile);
 					fclose(pfile);
-					
+
 					// verify downloaded content - thanks airline38
 					pfile = fopen(txtpath, "rb");
 					if(pfile)
@@ -1539,4 +1538,3 @@ int CodeDownload(const char *id)
 
 	return ret;
 }
-

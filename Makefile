@@ -16,6 +16,7 @@ include $(DEVKITPPC)/wii_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	boot
 BUILD		:=	build
+DEPLOY		:=  usbloader_gx
 SOURCES		:=	source \
 				source/GUI \
 				source/Controls \
@@ -47,7 +48,8 @@ SOURCES		:=	source \
 				source/SystemMenu \
 				source/utils \
 				source/utils/minizip \
-				source/usbloader/wbfs
+				source/usbloader/wbfs \
+				source/cache
 DATA		:=	data \
 				data/images \
 				data/fonts \
@@ -59,7 +61,7 @@ INCLUDES	:=	source
 # Default cIOS to load into to load the settings
 #---------------------------------------------------------------------------------
 ifndef $(IOS)
-IOS = 58
+IOS = 249
 endif
 
 #---------------------------------------------------------------------------------
@@ -181,14 +183,28 @@ all:
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTPUT).elf $(OUTPUT).dol
+	@rm -fr $(BUILD) $(DEPLOY) $(OUTPUT).elf $(OUTPUT).dol $(DEPLOY).zip
 #---------------------------------------------------------------------------------
 run:
 	$(MAKE)
 	@echo Done building ...
 	@echo Now Run That Shit ...
 
-	wiiload $(OUTPUT).dol
+	wiiload $(OUTPUT).dol --ios=249
+
+#---------------------------------------------------------------------------------
+deploy:
+	$(MAKE)
+	@echo Done building ...
+	@echo Now Run That Shit ...
+
+	@[ -d $(DEPLOY) ] || mkdir -p $(DEPLOY)
+	@cp $(TARGET).dol $(DEPLOY)/
+	@cp HBC/icon.png $(DEPLOY)/
+	@cp HBC/meta.xml $(DEPLOY)/
+	@zip $(DEPLOY).zip $(DEPLOY)/*
+
+	wiiload $(DEPLOY).zip
 
 #---------------------------------------------------------------------------------
 reload:
@@ -267,7 +283,7 @@ language: $(wildcard $(PROJECTDIR)/Languages/*.lang) $(wildcard $(PROJECTDIR)/Th
 %.tmd.o	:	%.tmd
 	@echo $(notdir $<)
 	@bin2s -a 32 $< | $(AS) -o $(@)
-	
+
 %.bnr.o	:	%.bnr
 	@echo $(notdir $<)
 	@bin2s -a 32 $< | $(AS) -o $(@)

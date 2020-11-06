@@ -22,5 +22,4 @@ int FormatingPartition(const char *title, int part_num);
 bool NetworkInitPrompt();
 int WindowScreensaver();
 int CodeDownload(const char *id);
-
 #endif

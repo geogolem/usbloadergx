@@ -11,6 +11,7 @@
 #include "themes/CTheme.h"
 #include "utils/tools.h"
 #include "system/IosLoader.h"
+#include "cache/cache.hpp"
 
 #define WII_MAGIC   0x5D1C9EA3
 
@@ -76,7 +77,7 @@ int MenuGCInstall()
 		destination = WindowPrompt(tr("Where should the game be installed to?"), 0, tr("Main Path"), tr("SD Path"), tr("Cancel"));
 	if(!destination)
 		return MENU_DISCLIST;
-		
+
 	//! Alert the user if he is dumping on SD with DIOS MIOS (USB) installed
 	if(destination == 2 && IosLoader::GetMIOSInfo() == DIOS_MIOS)
 	{
@@ -287,6 +288,7 @@ int MenuInstall()
 			else
 			{
 				ShowProgress(tr("Install finished"), headerdisc.title, tr("Reloading game list now, please wait..."), gamesize, gamesize, true, true);
+				ResetGameHeaderCache();
 				gameList.ReadGameList(); //get the entries again
 				gameList.FilterList();
 				bgMusic->Pause();
